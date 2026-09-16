@@ -1,0 +1,110 @@
+1: from __future__ import annotations
+2: 
+3: import json
+4: from typing import Any
+5: 
+6: from app.core.exceptions import AppError, ConflictError
+7: from app.domain.models import AgentContext
+8: from app.domain.text import (
+9:     hours_between,
+10:     normalize_persian_text,
+11:     normalize_time,
+12:     parse_bool,
+13:     sap_duration_to_time,
+14:     time_to_seconds,
+15:     validate_jalali_range,
+16: )
+17: from app.infrastructure.clients.personnel_client import PersonnelClient
+18: 
+19: 
+20: class HrService:
+21:     def __init__(self, client: PersonnelClient):
+22:         self.client = client
+23: 
+24:     async def get_time_account(self, context: AgentContext, date: str) -> dict[str, Any]:
+25:         start, _ = validate_jalali_range(date, date)
+26:         return await self.client.get("GetTimeAccount", context, {"EmployeeID": context.employee_id, "Date": start})
+27: 
+28:     async def get_leave_types(self, context: AgentContext) -> dict[str, Any]:
+29:         return await self.client.get("GetLeaveType", context, {"EmployeeID": context.employee_id})
+30: 
+31:     async def get_quota_available(self, context: AgentContext, absence_type_code: str, info_type: str) -> dict[str, Any]:
+32:         return await self.client.get(
+33:             "GetLeaveQuotaAvailable",
+34:             context,
+35:             {"AbsenceTypeCode": absence_type_code, "EmployeeID": context.employee_id, "InfoType": info_type},
+36:         )
+37: 
+38:     async def calculate_leave_span(
+39:         self,
+40:         context: AgentContext,
+41:         absence_type_code: str,
+42:         info_type: str,
+43:         start_date: str,
+44:         end_date: str,
+45:         begin_time: str = "",
+46:         end_time: str = "",
+47:     ) -> dict[str, Any]:
+48:         start_date, end_date = validate_jalali_range(start_date, end_date)
+49:         params: dict[str, Any] = {
+50:             "EmployeeID": context.employee_id,
+51:             "AbsenceTypeCode": absence_type_code,
+52:             "InfoType": info_type,
+53:             "StartDate": start_date,
+54:             "EndDate": end_date,
+55:         }
+56:         if begin_time:
+57:             params["BeginTime"] = normalize_time(begin_time)
+58:         if end_time:
+59:             params["EndTime"] = normalize_time(end_time)
+60:         return await self.client.get("GetCalculateLeaveSpan", context, params)
+61: 
+62:     async def get_leave_requests(self, context: AgentContext, start_date: str) -> dict[str, Any]:
+63:         start_date, _ = validate_jalali_range(start_date, start_date)
+64:         return await self.client.get("GetLeaveRequest", context, {"EmployeeID": context.employee_id, "StartDate": start_date})
+65: 
+66:     async def get_leave_request_detail(
+67:         self, context: AgentContext, request_id: str, change_state_id: int | str, leave_key: str
+68:     ) -> dict[str, Any]:
+69:         return await self.client.get(
+70:             "GetLeaveRequestDetail",
+71:             context,
+72:             {"EmployeeID": context.employee_id, "RequestID": request_id, "ChangeStateID": change_state_id, "LeaveKey": leave_key},
+73:         )
+74: 
+75:     async def delete_leave_request(
+76:         self,
+77:         context: AgentContext,
+78:         request_id: str,
+79:         change_state_id: int | str,
+80:         leave_key: str,
+81:         *,
+82:         idempotency_key: str | None = None,
+83:     ) -> dict[str, Any]:
+84:         if not request_id or not leave_key:
+85:             raise AppError("شناسه درخواست برای حذف کامل نیست.", code="INVALID_DELETE_REQUEST")
+86:         return await self.client.post_json(
+87:             "LeaveRequestSetDelete",
+88:             context,
+89:             {"employeeID": context.employee_id, "requestID": request_id, "changeStateID": change_state_id, "leaveKey": leave_key},
+90:             idempotency_key=idempotency_key,
+91:         )
+92: 
+93:     async def save_leave(
+94:         self,
+95:         context: AgentContext,
+96:         leave_type: dict[str, Any],
+97:         *,
+98:         start_date: str,
+99:         end_date: str,
+100:         start_time: str = "",
+101:         end_time: str = "",
+102:         notes: str = "",
+103:         additional_values: dict[str, Any] | None = None,
+104:         idempotency_key: str | None = None,
+105:     ) -> dict[str, Any]:
+106:         start_date, end_date = validate_jalali_range(start_date, end_date)
+107:         is_partial = parse_bool(leave_type.get("isAllowedDurationPartialDay"))
+108:         allows_multiple_days = parse_bool(leave_type.get("isAllowedDurationMultipleDay"))
+109:         if not allows_multiple_days and start_date != end_date:
+110:             raise AppError("این نوع درخواست امکان ثبت چندروزه ندارد.", code="MULTI_DAY_NOT_ALLOWED")

@@ -1,0 +1,163 @@
+Holding Smart Agent - NLU Architecture Report
+========================================================================
+Generated at: 2026-07-21T09:18:24
+Root directory: D:\serviceAi
+Python files inspected: 41
+Files with syntax errors: 6
+
+Important files
+------------------------------------------------------------------------
+[FOUND] app\application\services\chat_service.py
+[FOUND] app\application\services\intent_guard.py
+[FOUND] app\application\services\food_service.py
+[FOUND] app\application\services\hr_service.py
+[FOUND] app\domain\models.py
+[FOUND] app\domain\text.py
+[FOUND] app\api\routes\agent.py
+
+Public and internal request models
+------------------------------------------------------------------------
+ChatContextRequest: session
+ChatRequest: model_config, message, context
+AgentContext: model_config, employee_id, display_name, date, restaurant_id, meal_id, session, is_month_end_reminder, reminder_scope
+DailyBriefRequest: (none)
+
+Detected NLU components
+------------------------------------------------------------------------
+app\api\dependencies.py
+  CLASS GatewayIdentity (line 13)
+  FUNCTION require_user_identity (line 19)
+  FUNCTION require_admin_identity (line 40)
+app\application\services\chat_service.py
+  CLASS ChatService (line 32)
+  FUNCTION ChatService._handle_pending_action_reply (line 195)
+  FUNCTION ChatService._pending_action_reply_kind (line 294)
+  FUNCTION ChatService._action_success_reply (line 361)
+  FUNCTION ChatService._handle_pending_chat_state (line 390)
+  FUNCTION ChatService._resume_food_request (line 513)
+  FUNCTION ChatService._begin_restaurant_selection (line 566)
+  FUNCTION ChatService._restaurant_selection_prompt (line 655)
+  FUNCTION ChatService._match_restaurant_reply (line 678)
+  FUNCTION ChatService._is_food (line 849)
+  FUNCTION ChatService._is_leave_balance (line 862)
+  FUNCTION ChatService._is_leave_list (line 873)
+  FUNCTION ChatService._is_delete_leave (line 911)
+  FUNCTION ChatService._is_leave_create (line 930)
+  FUNCTION ChatService._is_attendance (line 950)
+  FUNCTION ChatService._handle_food (line 962)
+  FUNCTION ChatService._prepare_cancel_food (line 1296)
+  FUNCTION ChatService._prepare_food_rating (line 1376)
+  FUNCTION ChatService._prepare_delete_leave (line 1485)
+  FUNCTION ChatService._prepare_create_leave (line 1643)
+  FUNCTION ChatService._handle_attendance (line 1812)
+  FUNCTION ChatService._extract_additional_values (line 1933)
+  REGEX PATTERNS: 9
+app\application\services\context_resolver.py
+  FUNCTION ContextResolver.require_employee (line 33)
+app\application\services\daily_brief_service.py
+  FUNCTION DailyBriefService._food_card (line 48)
+  FUNCTION DailyBriefService._attendance_card (line 104)
+  FUNCTION DailyBriefService._leave_card (line 132)
+app\application\services\hr_service.py
+  FUNCTION HrService.get_time_account (line 24)
+  FUNCTION HrService.get_leave_types (line 28)
+  FUNCTION HrService.calculate_leave_span (line 38)
+  FUNCTION HrService.get_leave_requests (line 62)
+  FUNCTION HrService.get_leave_request_detail (line 66)
+  FUNCTION HrService.delete_leave_request (line 75)
+  FUNCTION HrService.save_leave (line 93)
+  FUNCTION HrService.get_time_events (line 143)
+  FUNCTION HrService.post_time_event (line 147)
+  FUNCTION HrService.ensure_no_exact_duplicate_leave (line 165)
+  FUNCTION HrService.find_leave_type (line 203)
+  FUNCTION HrService.validate_time_event_distance (line 234)
+  FUNCTION HrService._validate_required_additional_fields (line 268)
+app\application\services\intent_guard.py
+  CLASS IntentDecision (line 10)
+  CLASS IntentGuard (line 41)
+  FUNCTION IntentGuard._detect_intent (line 568)
+  FUNCTION IntentGuard._domain_suggestions (line 625)
+app\core\config.py
+  FUNCTION Settings.validate_runtime (line 121)
+app\core\logging.py
+  CLASS RedactionFilter (line 33)
+app\core\security.py
+  FUNCTION normalize_bearer_token (line 39)
+  REGEX PATTERNS: 1
+app\core\time.py
+  FUNCTION local_jalali_today (line 13)
+app\domain\models.py
+  CLASS ActionType (line 50)
+  CLASS EmployeeRequestBase (line 225)
+  CLASS ChatContextRequest (line 330)
+  CLASS ChatRequest (line 375)
+  CLASS ActionRequestBase (line 408)
+  CLASS ConfirmActionRequest (line 423)
+  CLASS CancelActionRequest (line 432)
+  CLASS ActionStatusRequest (line 440)
+  CLASS PendingActionRecord (line 448)
+  FUNCTION UserSession.validate_digit_code (line 109)
+  FUNCTION AgentContext.validate_date (line 215)
+  FUNCTION EmployeeRequestBase.strip_employee_id (line 252)
+  FUNCTION IntegrationContextRequest.validate_date (line 304)
+  FUNCTION ChatRequest.message_not_empty (line 394)
+app\domain\text.py
+  FUNCTION normalize_persian_text (line 11)
+  FUNCTION parse_bool (line 17)
+  FUNCTION parse_int (line 32)
+  FUNCTION parse_float (line 41)
+  FUNCTION validate_jalali_date (line 83)
+  FUNCTION normalize_jalali_date (line 99)
+  FUNCTION extract_jalali_dates (line 104)
+  FUNCTION validate_jalali_range (line 109)
+  FUNCTION extract_times (line 164)
+  FUNCTION normalize_time (line 169)
+  FUNCTION hours_between (line 180)
+  FUNCTION sap_duration_to_time (line 189)
+  FUNCTION time_to_seconds (line 202)
+  REGEX PATTERNS: 5
+app\infrastructure\clients\base_client.py
+  FUNCTION ExternalApiClient._employee_id (line 36)
+  FUNCTION ExternalApiClient._parse_response (line 179)
+app\infrastructure\repositories\state_repository.py
+  FUNCTION StateRepository.save_pending_action (line 148)
+  FUNCTION StateRepository._insert_action (line 167)
+  FUNCTION StateRepository.get_pending_action (line 190)
+  FUNCTION StateRepository.get_latest_pending_action (line 200)
+  FUNCTION StateRepository.get_action_state (line 266)
+  FUNCTION StateRepository.claim_pending_action (line 292)
+  FUNCTION StateRepository.complete_pending_action (line 321)
+  FUNCTION StateRepository.cancel_pending_action (line 351)
+  FUNCTION StateRepository.save_chat_state (line 372)
+  FUNCTION StateRepository.get_chat_state (line 420)
+  FUNCTION StateRepository.delete_chat_state (line 456)
+  FUNCTION StateRepository.list_reminders_for_date (line 542)
+  FUNCTION StateRepository.save_reminder_with_action (line 572)
+  FUNCTION StateRepository._row_to_action (line 706)
+
+Duplicate relevant function names
+------------------------------------------------------------------------
+validate_date
+  - app\domain\models.py:215
+  - app\domain\models.py:304
+
+Syntax errors
+------------------------------------------------------------------------
+app\api\routes\agent.py: {'message': 'invalid non-printable character U+FEFF (agent.py, line 1)', 'line': 1, 'offset': 1}
+app\application\services\action_service.py: {'message': 'invalid non-printable character U+FEFF (action_service.py, line 1)', 'line': 1, 'offset': 1}
+app\application\services\food_service.py: {'message': 'invalid non-printable character U+FEFF (food_service.py, line 1)', 'line': 1, 'offset': 1}
+app\application\services\reminder_service.py: {'message': 'invalid non-printable character U+FEFF (reminder_service.py, line 1)', 'line': 1, 'offset': 1}
+app\infrastructure\clients\food_client.py: {'message': 'invalid non-printable character U+FEFF (food_client.py, line 1)', 'line': 1, 'offset': 1}
+app\infrastructure\clients\personnel_client.py: {'message': 'invalid non-printable character U+FEFF (personnel_client.py, line 1)', 'line': 1, 'offset': 1}
+
+Recommended review order
+------------------------------------------------------------------------
+1. app/application/services/chat_service.py
+2. app/application/services/intent_guard.py
+3. app/domain/text.py
+4. Date/time/entity extraction functions
+5. Pending confirmation routing
+6. Food, leave, mission and attendance handlers
+7. API route and request/response models
+
+This report only inspected source code. No project file was modified.

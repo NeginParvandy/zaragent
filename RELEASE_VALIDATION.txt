@@ -1,0 +1,17 @@
+Holding Smart Agent 2.4.6 Offline Server Release - Validation
+===============================================================
+
+Target: Windows Server x64 / Python 3.13
+Wheelhouse: 27 pinned packages
+Offline dependency resolution: PASSED
+Python syntax compilation: PASSED
+Application startup/lifespan test: PASSED
+GET /api/agent/live: 200, status=ok
+GET /api/agent/ready: 200, status=ready
+GET /swagger: 200
+GET /openapi.json: 200
+Local Swagger JavaScript: 200
+Local Swagger CSS: 200
+Swagger external CDN references in generated HTML: NONE
+/docs redirect to /swagger: PASSED
+Forbidden release artifacts (.env, .venv, pyc, logs, database): NONE

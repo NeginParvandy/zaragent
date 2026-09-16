@@ -1,0 +1,47 @@
+CHAT_TRACE_FAILURE employee_id=05000602 conversation_id=bridge-a30cb5b0534cef8e20e6541ef8b39ad6 exception_type=IntegrationError code=DOWNSTREAM_VALIDATION_ERROR status_code=422 details={'service': 'HR', 'path': '/api/v{version}/Personnel/PostLeaveSave', 'downstreamStatusCode': 400}
+
+Traceback (most recent call last):
+  File "D:\serviceAi\app\api\routes\agent.py", line 525, in chat
+    data = await container.chat_service.handle(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "D:\serviceAi\app\application\services\chat_service.py", line 93, in handle
+    await self._handle_pending_action_reply(
+    ...<3 lines>...
+    )
+  File "D:\serviceAi\app\application\services\chat_service.py", line 702, in _handle_pending_action_reply
+    result = await self.actions.confirm(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "D:\serviceAi\app\application\services\action_service.py", line 190, in confirm
+    result = await self._execute(
+             ^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "D:\serviceAi\app\application\services\action_service.py", line 663, in _execute
+    return await self.hr.save_leave(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<19 lines>...
+    )
+    ^
+  File "D:\serviceAi\app\application\services\hr_service.py", line 141, in save_leave
+    return await self.client.post_form("PostLeaveSave", context, payload, idempotency_key=idempotency_key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\serviceAi\app\infrastructure\clients\personnel_client.py", line 72, in post_form
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "D:\serviceAi\app\infrastructure\clients\base_client.py", line 149, in request
+    result = self._parse_response(response, path, context)
+  File "D:\serviceAi\app\infrastructure\clients\base_client.py", line 198, in _parse_response
+    raise IntegrationError(
+    ...<4 lines>...
+    )
+app.core.exceptions.IntegrationError: خطا در ثبت مرخصی: Attendance/absence type 0010 requires minimum of 1 attendance/absence days

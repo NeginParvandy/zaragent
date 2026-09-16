@@ -1,0 +1,149 @@
+:root {
+  color-scheme: dark;
+  --background: #111827;
+  --surface: #182235;
+  --border: #2f3d52;
+  --text: #e8edf7;
+  --muted: #aeb9cc;
+  --accent: #d6b25e;
+  --action: #4e8cff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  background: radial-gradient(circle at top, #233046, var(--background) 60%);
+  font-family: Tahoma, Arial, sans-serif;
+}
+
+.shell {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 48px 22px;
+}
+
+.hero {
+  padding: 34px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: rgb(24 34 53 / 88%);
+  box-shadow: 0 22px 60px rgb(0 0 0 / 35%);
+}
+
+.status-row {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 5px rgb(74 222 128 / 12%);
+}
+
+.hero h1 {
+  margin: 16px 0 18px;
+  font-size: clamp(30px, 5vw, 42px);
+}
+
+.hero p,
+.grid p {
+  color: var(--muted);
+  line-height: 2;
+}
+
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0 0;
+}
+
+.metadata div {
+  min-width: 145px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgb(17 24 39 / 45%);
+}
+
+.metadata dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metadata dd {
+  margin: 6px 0 0;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.actions a {
+  padding: 11px 16px;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--action);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.actions a.secondary {
+  border: 1px solid var(--border);
+  background: #22304a;
+}
+
+.actions a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.grid article {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgb(24 34 53 / 72%);
+}
+
+.grid h2 {
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 18px;
+}
+
+.grid p {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .shell {
+    padding: 24px 14px;
+  }
+
+  .hero {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+}

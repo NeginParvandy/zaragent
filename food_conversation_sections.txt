@@ -1,0 +1,970 @@
+
+=== FOOD_NLU ===
+1159:             == "FOOD"
+1160:             and not entities.get("date")
+1161:         ):
+1162:             entities["date"] = active_date
+1163:             updated_state["entities"] = (
+1164:                 entities
+1165:             )
+1166: 
+1167:         return updated_state
+1168: 
+1169:     def _enrich_food_nlu_result(
+1170:         self,
+1171:         nlu_result: dict[str, Any],
+1172:         text: str,
+1173:         conversation_payload: dict[str, Any],
+1174:     ) -> dict[str, Any]:
+1175:         result = dict(nlu_result)
+1176: 
+1177:         is_food_follow_up = (
+1178:             str(
+1179:                 conversation_payload.get(
+1180:                     "lastDomain"
+1181:                 )
+1182:                 or ""
+1183:             )
+1184:             == "FOOD"
+1185:             and bool(
+1186:                 conversation_payload.get(
+1187:                     "recentMenus"
+1188:                 )
+1189:             )
+1190:             and (
+1191:                 bool(
+1192:                     self._infer_menu_date(
+1193:                         text,
+1194:                         conversation_payload,
+1195:                     )
+1196:                 )
+1197:                 or bool(
+1198:                     self._find_food_candidates(
+1199:                         text,
+1200:                         conversation_payload,
+1201:                     )
+1202:                 )
+1203:             )
+1204:         )
+1205: 
+1206:         if (
+1207:             result.get("domain")
+1208:             in {"UNKNOWN", "OUT_OF_SCOPE"}
+1209:             and is_food_follow_up
+1210:         ):
+1211:             inferred_date = (
+1212:                 self._infer_menu_date(
+1213:                     text,
+1214:                     conversation_payload,
+1215:                 )
+1216:                 or conversation_payload.get(
+1217:                     "activeDate"
+1218:                 )
+1219:             )
+1220:             entities: dict[str, Any] = {}
+1221: 
+1222:             if inferred_date:
+1223:                 entities["date"] = str(
+1224:                     inferred_date
+1225:                 )
+1226: 
+1227:             missing_fields = (
+1228:                 []
+1229:                 if inferred_date
+1230:                 else ["date"]
+1231:             )
+1232: 
+1233:             result = {
+1234:                 "domain": "FOOD",
+1235:                 "intent": "RESERVE_FOOD",
+1236:                 "entities": entities,
+1237:                 "confidence": 0.95,
+1238:                 "missingFields": missing_fields,
+1239:                 "needsClarification": bool(
+1240:                     missing_fields
+1241:                 ),
+1242:                 "conversationComplete": False,
+1243:                 "clarification": (
+1244:                     "برای چه روزی غذا رزرو شود؟"
+1245:                     if missing_fields
+1246:                     else None
+1247:                 ),
+1248:                 "errors": [],
+1249:                 "state": {
+1250:                     "domain": "FOOD",
+1251:                     "intent": "RESERVE_FOOD",
+1252:                     "entities": entities,
+1253:                     "missingFields": (
+1254:                         missing_fields
+1255:                     ),
+1256:                 },
+1257:             }
+1258: 
+1259:         if (
+1260:             result.get("domain")
+1261:             != "FOOD"
+1262:             or result.get("intent")
+1263:             != "RESERVE_FOOD"
+1264:         ):
+1265:             return result
+1266: 
+1267:         entities = dict(
+1268:             result.get("entities")
+1269:             or {}
+1270:         )
+1271: 
+1272:         inferred_date = (
+1273:             entities.get("date")
+1274:             or self._infer_menu_date(
+1275:                 text,
+1276:                 conversation_payload,
+1277:             )
+1278:             or conversation_payload.get(
+1279:                 "activeDate"
+1280:             )
+1281:         )
+1282: 
+1283:         if inferred_date:
+1284:             entities["date"] = str(
+1285:                 inferred_date
+1286:             )
+1287:             result["entities"] = entities
+1288: 
+1289:             missing_fields = [
+1290:                 item
+1291:                 for item in (
+1292:                     result.get(
+1293:                         "missingFields"
+1294:                     )
+1295:                     or []
+1296:                 )
+1297:                 if item != "date"
+1298:             ]
+1299:             result["missingFields"] = (
+1300:                 missing_fields
+1301:             )
+1302:             result["needsClarification"] = (
+1303:                 bool(
+1304:                     missing_fields
+1305:                     or result.get("errors")
+1306:                 )
+1307:             )
+1308: 
+
+=== IS_FOOD ===
+2620:             keyword in text
+2621:             for keyword in [
+2622:                 "گزارش امروز",
+2623:                 "خلاصه امروز",
+2624:                 "وضعیت امروز",
+2625:                 "گزارش روزانه",
+2626:             ]
+2627:         )
+2628: 
+2629:     @staticmethod
+2630:     def _is_food(text: str) -> bool:
+2631:         return any(
+2632:             keyword in text
+2633:             for keyword in [
+2634:                 "غذا",
+2635:                 "منو",
+2636:                 "ناهار",
+2637:                 "شام",
+2638:                 "رزرو خوراک",
+2639:             ]
+2640:         )
+2641: 
+2642:     @staticmethod
+2643:     def _is_leave_balance(text: str) -> bool:
+2644:         return any(
+2645:             keyword in text
+2646:             for keyword in [
+2647:                 "مانده مرخصی",
+2648:                 "سهمیه مرخصی",
+2649:                 "موجودی مرخصی",
+2650:             ]
+2651:         )
+2652: 
+2653:     @staticmethod
+2654:     def _is_leave_list(text: str) -> bool:
+2655:         read_words = [
+2656:             "نمایش",
+2657:             "نشان",
+2658:             "لیست",
+2659:             "ببین",
+2660:             "وضعیت",
+2661:             "درخواست های",
+2662:             "درخواست‌های",
+2663:         ]
+2664:         leave_words = [
+2665:             "مرخصی",
+2666:             "ماموریت",
+2667:             "مأموریت",
+2668:         ]
+2669:         mutation_words = [
+2670:             "ثبت",
+2671:             "حذف",
+2672:             "لغو",
+2673:             "کنسل",
+2674:             "بزن",
+2675:         ]
+2676:         return (
+2677:             any(
+2678:                 word in text
+2679:                 for word in read_words
+2680:             )
+2681:             and any(
+2682:                 word in text
+2683:                 for word in leave_words
+2684:             )
+2685:             and not any(
+2686:                 word in text
+2687:                 for word in mutation_words
+2688:             )
+2689:         )
+2690: 
+2691:     @staticmethod
+2692:     def _is_delete_leave(text: str) -> bool:
+2693:         return any(
+2694:             keyword in text
+2695:             for keyword in [
+2696:                 "حذف",
+2697:                 "کنسل",
+2698:                 "لغو",
+2699:             ]
+2700:         ) and any(
+2701:             keyword in text
+2702:             for keyword in [
+2703:                 "مرخصی",
+2704:                 "ماموریت",
+2705:                 "مأموریت",
+2706:                 "درخواست",
+2707:             ]
+2708:         )
+2709: 
+2710:     @staticmethod
+2711:     def _is_leave_create(text: str) -> bool:
+2712:         return any(
+2713:             keyword in text
+2714:             for keyword in [
+2715:                 "مرخصی",
+2716:                 "ماموریت",
+2717:                 "مأموریت",
+2718:                 "اضافه کاری",
+2719:                 "اضافه‌کاری",
+
+=== HANDLE_FOOD ===
+2733:             keyword in text
+2734:             for keyword in [
+2735:                 "تردد",
+2736:                 "ورود",
+2737:                 "خروج",
+2738:                 "ساعت زنی",
+2739:                 "ساعت‌زنی",
+2740:             ]
+2741:         )
+2742: 
+2743:     async def _handle_food(
+2744:         self,
+2745:         context: AgentContext,
+2746:         text: str,
+2747:         dates: list[str],
+2748:         *,
+2749:         restaurant_validated: bool = False,
+2750:         selected_restaurant: dict[str, Any] | None = None,
+2751:         conversation_payload: dict[str, Any] | None = None,
+2752:     ) -> dict[str, Any]:
+2753:         conversation_payload = dict(
+2754:             conversation_payload or {}
+2755:         )
+2756: 
+2757:         requested_weekday = (
+2758:             self._requested_weekday(text)
+2759:         )
+2760: 
+2761:         target_date = (
+2762:             dates[0]
+2763:             if dates
+2764:             else (
+2765:                 None
+2766:                 if requested_weekday
+2767:                 else (
+2768:                     conversation_payload.get(
+2769:                         "activeDate"
+2770:                     )
+2771:                     or context.date
+2772:                 )
+2773:             )
+2774:         )
+2775: 
+2776:         menu_cache: dict[str, Any] | None = (
+2777:             None
+2778:         )
+2779: 
+2780:         if any(
+2781:             keyword in text
+2782:             for keyword in [
+2783:                 "امتیاز",
+2784:                 "ستاره",
+2785:                 "نظر غذا",
+2786:                 "نظر برای غذا",
+2787:             ]
+2788:         ):
+2789:             return await self._prepare_food_rating(
+2790:                 context,
+2791:                 text,
+2792:             )
+2793: 
+2794:         if not restaurant_validated:
+2795:             return await self._begin_restaurant_selection(
+2796:                 context,
+2797:                 text,
+2798:                 (
+2799:                     str(target_date)
+2800:                     if target_date
+2801:                     else None
+2802:                 ),
+2803:                 conversation_payload,
+2804:             )
+2805: 
+2806:         restaurant_data = (
+2807:             selected_restaurant
+2808:             or (
+2809:                 conversation_payload.get(
+2810:                     "restaurant"
+2811:                 )
+2812:                 if isinstance(
+2813:                     conversation_payload.get(
+2814:                         "restaurant"
+2815:                     ),
+2816:                     dict,
+2817:                 )
+2818:                 else None
+2819:             )
+2820:             or {
+2821:                 "restaurantId": (
+2822:                     context.restaurant_id
+2823:                 ),
+2824:                 "restaurantName": "",
+2825:             }
+2826:         )
+2827: 
+2828:         if (
+2829:             requested_weekday
+2830:             and not target_date
+2831:         ):
+2832:             menu_cache = (
+2833:                 await self.food.get_weekly_menu(
+2834:                     context
+2835:                 )
+2836:             )
+2837:             target_date = (
+2838:                 self._infer_menu_date_from_days(
+2839:                     text,
+2840:                     menu_cache.get("days")
+2841:                     or [],
+2842:                 )
+2843:             )
+2844: 
+2845:         if any(
+2846:             keyword in text
+2847:             for keyword in [
+2848:                 "حذف",
+2849:                 "لغو",
+2850:                 "کنسل",
+2851:             ]
+2852:         ):
+2853:             return await self._prepare_cancel_food(
+2854:                 context,
+2855:                 (
+2856:                     str(target_date)
+2857:                     if target_date
+2858:                     else None
+2859:                 ),
+2860:                 restaurant_data,
+2861:             )
+2862: 
+2863:         if any(
+2864:             keyword in text
+2865:             for keyword in [
+2866:                 "رزرو من",
+2867:                 "چی رزرو",
+2868:                 "غذای رزرو",
+2869:                 "وضعیت رزرو",
+2870:             ]
+2871:         ):
+2872:             menu = (
+2873:                 menu_cache
+2874:                 or await self.food.get_weekly_menu(
+2875:                     context
+2876:                 )
+2877:             )
+2878:             status_days = self._filter_menu_days(
+2879:                 menu.get("days") or [],
+2880:                 (
+2881:                     str(target_date)
+2882:                     if target_date
+2883:                     else None
+2884:                 ),
+2885:                 text,
+2886:             )
+2887:             selected = [
+2888:                 {
+2889:                     "date": day.get("date"),
+2890:                     "dayOfWeek": (
+2891:                         day.get("dayOfWeek")
+2892:                     ),
+2893:                     "selectedPlanDetailId": (
+2894:                         day.get(
+2895:                             "selectedPlanDetailId"
+2896:                         )
+2897:                     ),
+2898:                     "foods": (
+2899:                         day.get("foods") or []
+2900:                     ),
+2901:                 }
+2902:                 for day in status_days
+2903:                 if day.get(
+2904:                     "selectedPlanDetailId"
+2905:                 )
+2906:             ]
+2907: 
+2908:             return {
+2909:                 "reply": (
+2910:                     self._reservation_status_reply(
+2911:                         selected
+2912:                     )
+2913:                 ),
+2914:                 "requiresConfirmation": False,
+2915:                 "data": {
+2916:                     "restaurant": (
+2917:                         restaurant_data
+2918:                     ),
+2919:                     "reservations": selected,
+2920:                 },
+2921:             }
+2922: 
+2923:         reservation_intent = any(
+2924:             keyword in text
+2925:             for keyword in [
+2926:                 "رزرو",
+2927:                 "برام بگیر",
+2928:                 "برایم بگیر",
+2929:                 "ثبت غذا",
+2930:                 "سفارش بده",
+2931:             ]
+2932:         )
+2933: 
+2934:         recommendation_intent = any(
+2935:             keyword in text
+2936:             for keyword in [
+2937:                 "پیشنهاد",
+2938:                 "چی بخور",
+2939:                 "چه بخور",
+2940:                 "بهترین غذا",
+2941:                 "انتخاب مناسب",
+2942:             ]
+2943:         )
+2944: 
+2945:         menu_intent = any(
+2946:             keyword in text
+2947:             for keyword in [
+2948:                 "منو",
+2949:                 "نشان بده",
+2950:                 "نمایش",
+2951:                 "لیست",
+2952:                 "چه غذایی",
+2953:                 "غذاها",
+2954:             ]
+2955:         )
+2956: 
+2957:         if (
+2958:             menu_intent
+2959:             and not reservation_intent
+2960:             and not recommendation_intent
+2961:         ):
+2962:             menu = (
+2963:                 menu_cache
+2964:                 or await self.food.get_weekly_menu(
+2965:                     context
+2966:                 )
+2967:             )
+2968:             days = self._filter_menu_days(
+2969:                 menu.get("days") or [],
+2970:                 (
+2971:                     str(target_date)
+2972:                     if target_date
+2973:                     else None
+2974:                 ),
+2975:                 text,
+2976:             )
+2977: 
+2978:             return {
+2979:                 "reply": (
+2980:                     self._menu_reply(days)
+2981:                 ),
+2982:                 "requiresConfirmation": False,
+2983:                 "data": {
+2984:                     **menu,
+2985:                     "restaurant": (
+2986:                         restaurant_data
+2987:                     ),
+2988:                     "days": days,
+2989:                 },
+2990:             }
+2991: 
+2992:         if (
+2993:             recommendation_intent
+2994:             and not reservation_intent
+2995:         ):
+2996:             recommendation = (
+2997:                 await self.food.recommend_food(
+2998:                     context,
+2999:                     (
+3000:                         str(target_date)
+3001:                         if target_date
+3002:                         else None
+
+=== MENU_REPLY ===
+3365:             day
+3366:             for day in safe_days
+3367:             if normalize_nlu_text(
+3368:                 day.get("dayOfWeek")
+3369:                 or ""
+3370:             ).replace(" ", "")
+3371:             == normalized_requested
+3372:         ]
+3373: 
+3374:     @staticmethod
+3375:     def _menu_reply(
+3376:         days: list[dict[str, Any]],
+3377:     ) -> str:
+3378:         if not days:
+3379:             return (
+3380:                 "برای تاریخ موردنظر منویی "
+3381:                 "پیدا نشد."
+3382:             )
+3383: 
+3384:         lines: list[str] = []
+3385: 
+3386:         for day in days:
+3387:             day_label = str(
+3388:                 day.get("dayOfWeek")
+3389:                 or day.get("date")
+3390:                 or "این روز"
+3391:             )
+3392:             date_value = str(
+3393:                 day.get("date") or ""
+3394:             )
+3395:             foods = [
+3396:                 str(
+3397:                     food.get("foodName")
+3398:                     or ""
+3399:                 ).strip()
+3400:                 for food in (
+3401:                     day.get("foods") or []
+3402:                 )
+3403:                 if isinstance(food, dict)
+3404:                 and str(
+3405:                     food.get("foodName")
+3406:                     or ""
+3407:                 ).strip()
+3408:             ]
+3409:             food_text = (
+3410:                 "، ".join(foods)
+3411:                 if foods
+3412:                 else "غذایی اعلام نشده"
+3413:             )
+3414: 
+3415:             if (
+3416:                 date_value
+3417:                 and date_value
+3418:                 not in day_label
+3419:             ):
+3420:                 label = (
+3421:                     f"{day_label} "
+3422:                     f"({date_value})"
+3423:                 )
+3424:             else:
+3425:                 label = day_label
+3426: 
+3427:             lines.append(
+3428:                 f"منوی {label}: {food_text}"
+3429:             )
+3430: 
+3431:         return "\n".join(lines)
+3432: 
+3433:     @staticmethod
+3434:     def _reservation_status_reply(
+3435:         selected: list[dict[str, Any]],
+3436:     ) -> str:
+3437:         if not selected:
+3438:             return (
+3439:                 "رزرو فعالی برای تاریخ "
+3440:                 "موردنظر پیدا نشد."
+3441:             )
+3442: 
+3443:         lines = [
+3444:             f"{len(selected)} رزرو فعال پیدا شد:"
+3445:         ]
+3446: 
+3447:         for item in selected:
+3448:             label = str(
+3449:                 item.get("dayOfWeek")
+3450:                 or item.get("date")
+3451:                 or "این روز"
+3452:             )
+3453:             selected_id = str(
+3454:                 item.get(
+3455:                     "selectedPlanDetailId"
+3456:                 )
+3457:                 or ""
+3458:             )
+3459:             food_name = next(
+3460:                 (
+3461:                     str(
+3462:                         food.get("foodName")
+3463:                         or ""
+3464:                     ).strip()
+3465:                     for food in (
+3466:                         item.get("foods") or []
+3467:                     )
+3468:                     if isinstance(food, dict)
+3469:                     and str(
+3470:                         food.get(
+3471:                             "planDetailId"
+3472:                         )
+3473:                     )
+3474:                     == selected_id
+3475:                 ),
+3476:                 "",
+3477:             )
+3478:             lines.append(
+3479:                 f"- {label}: "
+3480:                 f"{food_name or 'غذای رزروشده'}"
+3481:             )
+3482: 
+3483:         return "\n".join(lines)
+3484: 
+3485:     @staticmethod
+3486:     def _food_query_tokens(
+3487:         text: str,
+3488:     ) -> set[str]:
+3489:         normalized = normalize_nlu_text(
+3490:             text
+3491:         )
+3492:         tokens = set(
+3493:             re.findall(
+3494:                 r"[a-zA-Z]+|[0-9]+|"
+
+=== NAMED_RESERVATION ===
+3624:                         "date"
+3625:                     )
+3626:                     or ""
+3627:                 ),
+3628:             ),
+3629:             reverse=True,
+3630:         )
+3631: 
+3632:         return candidates
+3633: 
+3634:     async def _prepare_named_food_reservation(
+3635:         self,
+3636:         context: AgentContext,
+3637:         text: str,
+3638:         candidates: list[dict[str, Any]],
+3639:         target_date: str | None,
+3640:         restaurant: dict[str, Any],
+3641:         conversation_payload: dict[str, Any],
+3642:     ) -> dict[str, Any]:
+3643:         inferred_date = (
+3644:             self._infer_menu_date(
+3645:                 text,
+3646:                 conversation_payload,
+3647:             )
+3648:         )
+3649:         preferred_date = (
+3650:             target_date
+3651:             or inferred_date
+3652:             or str(
+3653:                 conversation_payload.get(
+3654:                     "activeDate"
+3655:                 )
+3656:                 or ""
+3657:             ).strip()
+3658:             or None
+3659:         )
+3660: 
+3661:         preferred_candidates = [
+3662:             item
+3663:             for item in candidates
+3664:             if (
+3665:                 not preferred_date
+3666:                 or str(
+3667:                     item.get(
+3668:                         "day",
+3669:                         {},
+3670:                     ).get("date")
+3671:                     or ""
+3672:                 )
+3673:                 == preferred_date
+3674:             )
+3675:         ]
+3676: 
+3677:         if not preferred_candidates:
+3678:             preferred_candidates = (
+3679:                 candidates
+3680:             )
+3681: 
+3682:         best_score = max(
+3683:             int(
+3684:                 item.get("score") or 0
+3685:             )
+3686:             for item in preferred_candidates
+3687:         )
+3688:         best_candidates = [
+3689:             item
+3690:             for item in preferred_candidates
+3691:             if int(
+3692:                 item.get("score") or 0
+3693:             )
+3694:             == best_score
+3695:         ]
+3696: 
+3697:         distinct_ids = {
+3698:             str(
+3699:                 item.get("food", {}).get(
+3700:                     "planDetailId"
+3701:                 )
+3702:                 or ""
+3703:             )
+3704:             for item in best_candidates
+3705:         }
+3706: 
+3707:         if (
+3708:             len(best_candidates) > 1
+3709:             and len(distinct_ids) > 1
+3710:             and all(
+3711:                 str(
+3712:                     item.get("day", {}).get(
+3713:                         "date"
+3714:                     )
+3715:                     or ""
+3716:                 )
+3717:                 == str(
+3718:                     best_candidates[0].get(
+3719:                         "day",
+3720:                         {},
+3721:                     ).get("date")
+3722:                     or ""
+3723:                 )
+3724:                 for item in best_candidates
+3725:             )
+3726:         ):
+3727:             names = [
+3728:                 str(
+3729:                     item.get("food", {}).get(
+3730:                         "foodName"
+3731:                     )
+3732:                     or "غذا"
+3733:                 )
+3734:                 for item in best_candidates
+3735:             ]
+3736: 
+3737:             return {
+3738:                 "reply": (
+3739:                     "چند غذای مشابه پیدا شد: "
+3740:                     + "، ".join(names)
+3741:                     + ". نام دقیق غذا را بفرستید."
+3742:                 ),
+3743:                 "requiresConfirmation": False,
+3744:                 "data": {
+3745:                     "candidates": (
+3746:                         best_candidates
+3747:                     ),
+3748:                     "restaurant": restaurant,
+3749:                 },
+3750:             }
+3751: 
+3752:         selected = best_candidates[0]
+3753:         day = selected["day"]
+3754:         food = selected["food"]
+3755: 
+3756:         plan_detail_id = food.get(
+3757:             "planDetailId"
+3758:         )
+3759: 
+3760:         if not plan_detail_id:
+3761:             raise AppError(
+3762:                 "شناسه غذای انتخاب‌شده از API دریافت نشد.",
+3763:                 code="MISSING_PLAN_DETAIL",
+3764:             )
+3765: 
+3766:         selected_plan_detail_id = (
+3767:             day.get(
+3768:                 "selectedPlanDetailId"
+3769:             )
+3770:         )
+3771: 
+3772:         if selected_plan_detail_id:
+3773:             if str(
+3774:                 selected_plan_detail_id
+3775:             ) == str(plan_detail_id):
+3776:                 return {
+3777:                     "reply": (
+3778:                         "این غذا قبلاً برای "
+3779:                         "این روز رزرو شده است."
+3780:                     ),
+3781:                     "requiresConfirmation": False,
+3782:                     "data": {
+3783:                         "date": day.get(
+3784:                             "date"
+3785:                         ),
+3786:                         "food": food,
+3787:                         "restaurant": restaurant,
+3788:                     },
+3789:                 }
+3790: 
+3791:             return {
+3792:                 "reply": (
+3793:                     "برای این روز قبلاً غذای "
+3794:                     "دیگری رزرو شده است."
+3795:                 ),
+3796:                 "requiresConfirmation": False,
+3797:                 "data": {
+3798:                     "date": day.get("date"),
+3799:                     "food": food,
+3800:                     "restaurant": restaurant,
+3801:                 },
+3802:             }
+3803: 
+3804:         remain_count = parse_int(
+3805:             food.get("remainCount")
+3806:         )
+3807: 
+3808:         if (
+3809:             remain_count is not None
+3810:             and remain_count <= 0
+3811:         ):
+3812:             return {
+3813:                 "reply": (
+3814:                     "ظرفیت این غذا تمام شده است."
+3815:                 ),
+3816:                 "requiresConfirmation": False,
+3817:                 "data": {
+3818:                     "date": day.get("date"),
+3819:                     "food": food,
+3820:                     "restaurant": restaurant,
+3821:                 },
+3822:             }
+3823: 
+3824:         action = (
+3825:             await self.actions.create_pending_action(
+3826:                 str(context.employee_id),
+3827:                 "RESERVE_FOOD",
+3828:                 {
+3829:                     "planDetailId": (
+3830:                         plan_detail_id
+3831:                     ),
+3832:                     "restaurantId": (
+3833:                         context.restaurant_id
+3834:                     ),
+3835:                     "mealId": (
+3836:                         context.meal_id
+3837:                         or FOOD_MEAL_ID
+3838:                     ),
+3839:                 },
+3840:             )
+3841:         )
+3842: 
+3843:         day_label = str(
+3844:             day.get("dayOfWeek")
+3845:             or day.get("date")
+3846:             or "این روز"
+3847:         )
+3848:         food_name = str(
+3849:             food.get("foodName")
+3850:             or "این غذا"
+3851:         )
+3852: 
+3853:         same_food_dates = {
+3854:             str(
+3855:                 item.get("day", {}).get(
+3856:                     "date"
+3857:                 )
+3858:                 or ""
+3859:             )
+3860:             for item in candidates
+3861:             if normalize_nlu_text(
+3862:                 item.get("food", {}).get(
+3863:                     "foodName"
+3864:                 )
+3865:                 or ""
+3866:             )
+3867:             == normalize_nlu_text(
+3868:                 food_name
+3869:             )
+3870:         }
+3871: 
+3872:         if len(
+3873:             {
+3874:                 value
+3875:                 for value in same_food_dates
+3876:                 if value
+3877:             }
+3878:         ) > 1:
+3879:             reply = (
+3880:                 f"منظورتان «{food_name}» "
+3881:                 f"{day_label} است؟ "
+3882:                 f"برای {day_label} رزرو کنم؟"
+3883:             )
+3884:         else:
+3885:             reply = (
+3886:                 f"«{food_name}» را برای "
+3887:                 f"{day_label} رزرو کنم؟"
+3888:             )
+3889: 
+3890:         return {
+3891:             "reply": reply,
+3892:             "requiresConfirmation": True,
+3893:             "pendingAction": {
+3894:                 "id": action["id"],
+3895:                 "label": (
+3896:                     "تأیید و رزرو غذا"
+3897:                 ),
+3898:                 "expiresAt": action.get(
+3899:                     "expiresAt"
+3900:                 ),
+3901:             },
+3902:             "data": {
+3903:                 "date": day.get("date"),
+3904:                 "dayOfWeek": (
+3905:                     day.get("dayOfWeek")
+3906:                 ),
+3907:                 "food": food,
+3908:                 "restaurant": restaurant,
+3909:                 "mealId": (
+3910:                     context.meal_id
+3911:                     or FOOD_MEAL_ID
+3912:                 ),
+3913:             },
+3914:         }
+3915: 
+3916:     async def _prepare_cancel_food(
+3917:         self,
+3918:         context: AgentContext,
+3919:         target_date: str | None,
+3920:         restaurant: dict[str, Any],
+3921:     ) -> dict[str, Any]:
+3922:         menu = await self.food.get_weekly_menu(
+3923:             context
+3924:         )
+3925: 
+3926:         for day in menu.get("days") or []:
+3927:             if (
+3928:                 target_date
+3929:                 and day.get("date") != target_date
+3930:             ):
+3931:                 continue
+3932: 
+3933:             selected = day.get(

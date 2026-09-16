@@ -1,0 +1,22 @@
+فاز 1 معماری Option B - تغییرات
+===============================
+
+هدف این فاز:
+ایجاد اسکلت معماری حرفه ای بدون بازنویسی یکباره ChatService پانزده هزار خطی و بدون تغییر گسترده رفتار فعلی.
+
+تغییرات اصلی:
+1) AgentOrchestrator اضافه شد و از این پس ورودی /api/agent/chat ابتدا وارد این لایه می شود.
+2) قرارداد AgentHandler اضافه شد تا هر دامنه به صورت Handler مستقل مهاجرت کند.
+3) MonthlyAttendanceHandler ساخته شد و مسئولیت مسیریابی گزارش ماهانه از ChatService خارج شد.
+4) ChatService فعلی حذف نشده و فعلا Fallback است تا قابلیت های فعلی غذا، منابع انسانی، تردد و Context در زمان مهاجرت از کار نیفتند.
+5) Container برای ساخت Orchestrator و Handler جدید اصلاح شد.
+6) فایل های Backup داخل app حذف نشدند؛ به _archive منتقل شدند تا سورس اجرایی در PyCharm تمیز شود.
+7) فایل های قدیمی nlu_core_backup.py، nlu_core_before_time_fix.py و models_before_legacy_chat_fix.py که Import فعالی نداشتند به Archive منتقل شدند.
+8) .gitignore استاندارد اضافه شد.
+9) تست اختصاصی AgentOrchestrator اضافه شد.
+
+مسیر جدید:
+MyZar -> /api/agent/chat -> AgentOrchestrator -> Domain Handler -> ChatService fallback
+
+مرحله بعد پیشنهادی:
+خارج کردن Attendance از ChatService و ساخت AttendanceHandler/AttendanceService به عنوان مهم ترین Domain پروژه.

@@ -1,0 +1,692 @@
+
+=== CHAT_FILTER ===
+3319:                 == normalized_requested
+3320:             ):
+3321:                 date_value = str(
+3322:                     day.get("date") or ""
+3323:                 ).strip()
+3324:                 return date_value or None
+3325: 
+3326:         return None
+3327: 
+3328:     @classmethod
+3329:     def _filter_menu_days(
+3330:         cls,
+3331:         days: list[Any],
+3332:         target_date: str | None,
+3333:         text: str,
+3334:     ) -> list[dict[str, Any]]:
+3335:         safe_days = [
+3336:             dict(day)
+3337:             for day in days
+3338:             if isinstance(day, dict)
+3339:         ]
+3340: 
+3341:         if target_date:
+3342:             return [
+3343:                 day
+3344:                 for day in safe_days
+3345:                 if str(
+3346:                     day.get("date") or ""
+3347:                 )
+3348:                 == str(target_date)
+3349:             ]
+3350: 
+3351:         requested_weekday = (
+3352:             cls._requested_weekday(text)
+3353:         )
+3354: 
+3355:         if not requested_weekday:
+3356:             return safe_days
+3357: 
+3358:         normalized_requested = (
+3359:             normalize_nlu_text(
+3360:                 requested_weekday
+3361:             ).replace(" ", "")
+3362:         )
+3363: 
+3364:         return [
+3365:             day
+3366:             for day in safe_days
+3367:             if normalize_nlu_text(
+3368:                 day.get("dayOfWeek")
+3369:                 or ""
+3370:             ).replace(" ", "")
+3371:             == normalized_requested
+3372:         ]
+3373: 
+3374:     @staticmethod
+3375:     def _menu_reply(
+3376:         days: list[dict[str, Any]],
+3377:     ) -> str:
+3378:         if not days:
+3379:             return (
+3380:                 "برای تاریخ موردنظر منویی "
+3381:                 "پیدا نشد."
+3382:             )
+3383: 
+3384:         lines: list[str] = []
+3385: 
+3386:         for day in days:
+3387:             day_label = str(
+3388:                 day.get("dayOfWeek")
+3389:                 or day.get("date")
+3390:                 or "این روز"
+3391:             )
+3392:             date_value = str(
+3393:                 day.get("date") or ""
+3394:             )
+3395:             foods = [
+3396:                 str(
+3397:                     food.get("foodName")
+3398:                     or ""
+3399:                 ).strip()
+3400:                 for food in (
+3401:                     day.get("foods") or []
+3402:                 )
+3403:                 if isinstance(food, dict)
+3404:                 and str(
+3405:                     food.get("foodName")
+3406:                     or ""
+3407:                 ).strip()
+3408:             ]
+3409:             food_text = (
+3410:                 "، ".join(foods)
+3411:                 if foods
+3412:                 else "غذایی اعلام نشده"
+3413:             )
+3414: 
+3415:             if (
+3416:                 date_value
+3417:                 and date_value
+3418:                 not in day_label
+3419:             ):
+3420:                 label = (
+3421:                     f"{day_label} "
+3422:                     f"({date_value})"
+3423:                 )
+3424:             else:
+3425:                 label = day_label
+3426: 
+3427:             lines.append(
+3428:                 f"منوی {label}: {food_text}"
+3429:             )
+3430: 
+3431:         return "\n".join(lines)
+3432: 
+3433:     @staticmethod
+3434:     def _reservation_status_reply(
+3435:         selected: list[dict[str, Any]],
+3436:     ) -> str:
+3437:         if not selected:
+3438:             return (
+3439:                 "رزرو فعالی برای تاریخ "
+3440:                 "موردنظر پیدا نشد."
+3441:             )
+3442: 
+3443:         lines = [
+3444:             f"{len(selected)} رزرو فعال پیدا شد:"
+3445:         ]
+3446: 
+3447:         for item in selected:
+3448:             label = str(
+3449:                 item.get("dayOfWeek")
+3450:                 or item.get("date")
+3451:                 or "این روز"
+3452:             )
+3453:             selected_id = str(
+3454:                 item.get(
+3455:                     "selectedPlanDetailId"
+3456:                 )
+3457:                 or ""
+3458:             )
+3459:             food_name = next(
+3460:                 (
+3461:                     str(
+3462:                         food.get("foodName")
+3463:                         or ""
+3464:                     ).strip()
+3465:                     for food in (
+3466:                         item.get("foods") or []
+3467:                     )
+3468:                     if isinstance(food, dict)
+3469:                     and str(
+3470:                         food.get(
+3471:                             "planDetailId"
+3472:                         )
+3473:                     )
+3474:                     == selected_id
+3475:                 ),
+3476:                 "",
+3477:             )
+3478:             lines.append(
+
+=== CHAT_CANDIDATES ===
+3525:         }
+3526: 
+3527:         return {
+3528:             token
+3529:             for token in tokens
+3530:             if token not in stop_words
+3531:             and not token.isdigit()
+3532:             and len(token) >= 2
+3533:         }
+3534: 
+3535:     def _find_food_candidates(
+3536:         self,
+3537:         text: str,
+3538:         conversation_payload: dict[str, Any],
+3539:     ) -> list[dict[str, Any]]:
+3540:         query_tokens = self._food_query_tokens(
+3541:             text
+3542:         )
+3543: 
+3544:         if not query_tokens:
+3545:             return []
+3546: 
+3547:         recent_menus = (
+3548:             conversation_payload.get(
+3549:                 "recentMenus"
+3550:             )
+3551:             or []
+3552:         )
+3553: 
+3554:         candidates: list[
+3555:             dict[str, Any]
+3556:         ] = []
+3557: 
+3558:         for day in recent_menus:
+3559:             if not isinstance(day, dict):
+3560:                 continue
+3561: 
+3562:             for food in day.get(
+3563:                 "foods"
+3564:             ) or []:
+3565:                 if not isinstance(food, dict):
+3566:                     continue
+3567: 
+3568:                 food_name = str(
+3569:                     food.get("foodName")
+3570:                     or ""
+3571:                 ).strip()
+3572: 
+3573:                 if not food_name:
+3574:                     continue
+3575: 
+3576:                 normalized_name = (
+3577:                     normalize_nlu_text(
+3578:                         food_name
+3579:                     )
+3580:                 )
+3581:                 name_tokens = set(
+3582:                     re.findall(
+3583:                         r"[a-zA-Z]+|[0-9]+|"
+3584:                         r"[\u0600-\u06FF]+",
+3585:                         normalized_name,
+3586:                     )
+3587:                 )
+3588: 
+3589:                 overlap = (
+3590:                     query_tokens
+3591:                     & name_tokens
+3592:                 )
+3593: 
+3594:                 if (
+3595:                     normalized_name
+3596:                     in normalize_nlu_text(
+3597:                         text
+3598:                     )
+3599:                     or overlap
+3600:                 ):
+3601:                     candidates.append(
+3602:                         {
+3603:                             "day": dict(day),
+3604:                             "food": dict(food),
+3605:                             "score": (
+3606:                                 len(overlap)
+3607:                                 + (
+3608:                                     2
+3609:                                     if normalized_name
+3610:                                     in normalize_nlu_text(
+3611:                                         text
+3612:                                     )
+3613:                                     else 0
+3614:                                 )
+3615:                             ),
+3616:                         }
+3617:                     )
+3618: 
+3619:         candidates.sort(
+3620:             key=lambda item: (
+3621:                 int(item.get("score") or 0),
+3622:                 str(
+3623:                     item.get("day", {}).get(
+3624:                         "date"
+3625:                     )
+3626:                     or ""
+3627:                 ),
+3628:             ),
+3629:             reverse=True,
+3630:         )
+3631: 
+3632:         return candidates
+3633: 
+3634:     async def _prepare_named_food_reservation(
+3635:         self,
+3636:         context: AgentContext,
+3637:         text: str,
+3638:         candidates: list[dict[str, Any]],
+3639:         target_date: str | None,
+3640:         restaurant: dict[str, Any],
+3641:         conversation_payload: dict[str, Any],
+3642:     ) -> dict[str, Any]:
+3643:         inferred_date = (
+3644:             self._infer_menu_date(
+3645:                 text,
+3646:                 conversation_payload,
+3647:             )
+3648:         )
+3649:         preferred_date = (
+3650:             target_date
+3651:             or inferred_date
+3652:             or str(
+3653:                 conversation_payload.get(
+3654:                     "activeDate"
+3655:                 )
+3656:                 or ""
+3657:             ).strip()
+3658:             or None
+3659:         )
+3660: 
+3661:         preferred_candidates = [
+3662:             item
+3663:             for item in candidates
+3664:             if (
+
+=== FOOD_WEEKLY ===
+190:                         restaurant_name
+191:                         or f"رستوران {restaurant_id}"
+192:                     ),
+193:                 }
+194:             )
+195: 
+196:             seen_ids.add(restaurant_id)
+197: 
+198:         return restaurants
+199: 
+200:     async def get_weekly_menu(self, context: AgentContext) -> dict[str, Any]:
+201:         payload = await self.client.get_food_plans_for_reserve(context)
+202:         days = _as_list(payload, "items", "days", "results")
+203:         return {
+204:             "restaurantId": context.restaurant_id or self.settings.default_restaurant_id,
+205:             "mealId": context.meal_id or self.settings.default_meal_id,
+206:             "days": [self._normalize_day(day) for day in days if isinstance(day, dict)],
+207:         }
+208: 
+209:     async def get_history(self, context: AgentContext) -> list[dict[str, Any]]:
+210:         payload = await self.client.get_my_food_reserve(context)
+211:         rows = _as_list(payload, "items", "results", "reserves")
+212:         return [self._normalize_history(item) for item in rows if isinstance(item, dict)]
+213: 
+214:     async def reserve_food(self, context: AgentContext, plan_detail_id: int | str, *, idempotency_key: str | None = None) -> dict[str, Any]:
+215:         plan_id = parse_int(plan_detail_id)
+216:         if plan_id is None or plan_id <= 0:
+217:             raise AppError("شناسه غذای انتخاب‌شده معتبر نیست.", code="INVALID_PLAN_DETAIL")
+218:         menu = await self.get_weekly_menu(context)
+219:         target_day: dict[str, Any] | None = None
+220:         target_food: dict[str, Any] | None = None
+221:         for day in menu.get("days", []):
+222:             for food in day.get("foods", []):
+223:                 if str(food.get("planDetailId")) == str(plan_id):
+224:                     target_day, target_food = day, food
+225:                     break
+226:             if target_food:
+227:                 break
+228:         if target_food is None:
+229:             raise NotFoundError("غذای انتخاب‌شده در منوی فعلی پیدا نشد.")
+230:         selected = target_day.get("selectedPlanDetailId") if target_day else None
+231:         if selected:
+232:             if str(selected) == str(plan_id):
+233:                 raise ConflictError("این غذا قبلاً برای این روز رزرو شده است.", details={"planDetailId": plan_id})
+234:             raise ConflictError("برای این روز قبلاً غذای دیگری رزرو شده است.", details={"selectedPlanDetailId": selected})
+235:         remain = parse_int(target_food.get("remainCount"))
+236:         if remain is not None and remain <= 0:
+237:             raise ConflictError("ظرفیت این غذا تمام شده است.", details={"planDetailId": plan_id})
+238:         return await self.client.reserve_food(context, [plan_id], idempotency_key=idempotency_key)
+239: 
+240:     async def cancel_food(self, context: AgentContext, plan_detail_id: int | str, *, idempotency_key: str | None = None) -> dict[str, Any]:
+241:         plan_id = parse_int(plan_detail_id)
+242:         if plan_id is None or plan_id <= 0:
+243:             raise AppError("شناسه رزرو غذا معتبر نیست.", code="INVALID_PLAN_DETAIL")
+244:         menu = await self.get_weekly_menu(context)
+245:         selected_ids = {str(day.get("selectedPlanDetailId")) for day in menu.get("days", []) if day.get("selectedPlanDetailId")}
+246:         if str(plan_id) not in selected_ids:
+247:             raise ConflictError("این رزرو دیگر فعال نیست یا قبلاً حذف شده است.", details={"planDetailId": plan_id})
+248:         return await self.client.delete_food_reserve(context, plan_id, idempotency_key=idempotency_key)
+249: 
+250:     async def get_rating(self, context: AgentContext, *, reserve_id: int | str = 0, plan_detail_id: int | str = 0) -> dict[str, Any]:
+251:         return await self.client.get_food_rate_comment(context, reserve_id=reserve_id, plan_detail_id=plan_detail_id)
+252: 
+253:     async def set_rating(
+254:         self,
+255:         context: AgentContext,
+256:         *,
+257:         reserve_id: int | str,
+258:         rate: int,
+259:         comment: str,
+260:         is_anonymous: bool,
+261:         idempotency_key: str | None = None,
+262:     ) -> dict[str, Any]:
+263:         safe_reserve_id = parse_int(reserve_id)
+264:         safe_rate = parse_int(rate)
+265:         if safe_reserve_id is None or safe_reserve_id <= 0:
+266:             raise AppError("شناسه رزرو برای ثبت امتیاز معتبر نیست.", code="INVALID_RESERVE_ID")
+267:         if safe_rate is None or safe_rate < 1 or safe_rate > 5:
+268:             raise AppError("امتیاز باید بین ۱ تا ۵ باشد.", code="INVALID_RATING")
+269:         return await self.client.set_food_rate_comment(
+270:             context,
+271:             reserve_id=safe_reserve_id,
+272:             rate=safe_rate,
+273:             comment=(comment or "").strip()[:1000],
+274:             is_anonymous=is_anonymous,
+275:             idempotency_key=idempotency_key,
+276:         )
+277: 
+278:     async def recommend_food(self, context: AgentContext, target_date: str | None = None) -> dict[str, Any]:
+279:         menu, history = await asyncio.gather(
+280:             self.get_weekly_menu(context),
+281:             self._safe_history(context),
+282:         )
+283: 
+284:         await self._write_weekly_inspection(
+285:             context=context,
+286:             menu=menu,
+287:             history=history,
+288:         )
+289: 
+290:         favorite_names = self._favorite_food_names(history)
+291:         target_days = menu["days"]
+292:         if target_date:
+293:             target_days = [day for day in target_days if day.get("date") == target_date]
+294:         already_reserved = [
+295:             {"date": day.get("date"), "selectedPlanDetailId": day.get("selectedPlanDetailId")}
+296:             for day in target_days
+297:             if day.get("selectedPlanDetailId")
+298:         ]
+299:         candidate_days = [day for day in target_days if not day.get("selectedPlanDetailId")]
+300:         candidates = [food for day in candidate_days for food in day.get("foods", []) if self._has_capacity(food)]
+301:         await self._enrich_ratings(context, candidates[: self.settings.max_rating_lookups])
+302: 
+303:         recommendations: list[dict[str, Any]] = []
+304:         for day in candidate_days:
+305:             available_foods = [food for food in day.get("foods", []) if self._has_capacity(food)]
+306:             best = self._best_food_candidate(available_foods, favorite_names)
+307:             if best:
+308:                 recommendations.append(
+309:                     {
+310:                         "date": day.get("date"),
+311:                         "dayOfWeek": day.get("dayOfWeek"),
+312:                         "food": best,
+313:                         "message": self._recommendation_message(day, best, favorite_names),
+314:                     }
+315:                 )
+316:         return {"recommendations": recommendations, "alreadyReserved": already_reserved, "menu": menu}
+317: 
+318:     async def _enrich_ratings(self, context: AgentContext, foods: list[dict[str, Any]]) -> None:
+319:         semaphore = asyncio.Semaphore(self.settings.rating_lookup_concurrency)
+320: 
+321:         async def enrich(item: dict[str, Any]) -> None:
+322:             plan_detail_id = item.get("planDetailId")
+323:             if not plan_detail_id:
+324:                 return
+325:             try:
+326:                 async with semaphore:
+327:                     rating = await self.get_rating(context, reserve_id=0, plan_detail_id=plan_detail_id)
+328:                 data = _unwrap(rating)
+329:                 item["ratingSummary"] = self._rating_summary(data if isinstance(data, dict) else {})
+330:             except Exception as exc:
+331:                 logger.warning("Food rating lookup failed plan_detail_id=%s error=%s", plan_detail_id, type(exc).__name__)
+332: 
+333:         await asyncio.gather(*(enrich(food) for food in foods))
+334: 
+335:     async def _safe_history(self, context: AgentContext) -> list[dict[str, Any]]:
+336:         try:
+337:             return await self.get_history(context)
+338:         except Exception as exc:
+339:             logger.warning("Food history lookup failed error=%s", type(exc).__name__)
+340:             return []
+341: 
+342: 
+343:     async def _write_weekly_inspection(
+344:         self,
+345:         *,
+346:         context: AgentContext,
+347:         menu: dict[str, Any],
+348:         history: list[dict[str, Any]],
+349:     ) -> None:
+
+=== FOOD_RECOMMEND ===
+268:             raise AppError("امتیاز باید بین ۱ تا ۵ باشد.", code="INVALID_RATING")
+269:         return await self.client.set_food_rate_comment(
+270:             context,
+271:             reserve_id=safe_reserve_id,
+272:             rate=safe_rate,
+273:             comment=(comment or "").strip()[:1000],
+274:             is_anonymous=is_anonymous,
+275:             idempotency_key=idempotency_key,
+276:         )
+277: 
+278:     async def recommend_food(self, context: AgentContext, target_date: str | None = None) -> dict[str, Any]:
+279:         menu, history = await asyncio.gather(
+280:             self.get_weekly_menu(context),
+281:             self._safe_history(context),
+282:         )
+283: 
+284:         await self._write_weekly_inspection(
+285:             context=context,
+286:             menu=menu,
+287:             history=history,
+288:         )
+289: 
+290:         favorite_names = self._favorite_food_names(history)
+291:         target_days = menu["days"]
+292:         if target_date:
+293:             target_days = [day for day in target_days if day.get("date") == target_date]
+294:         already_reserved = [
+295:             {"date": day.get("date"), "selectedPlanDetailId": day.get("selectedPlanDetailId")}
+296:             for day in target_days
+297:             if day.get("selectedPlanDetailId")
+298:         ]
+299:         candidate_days = [day for day in target_days if not day.get("selectedPlanDetailId")]
+300:         candidates = [food for day in candidate_days for food in day.get("foods", []) if self._has_capacity(food)]
+301:         await self._enrich_ratings(context, candidates[: self.settings.max_rating_lookups])
+302: 
+303:         recommendations: list[dict[str, Any]] = []
+304:         for day in candidate_days:
+305:             available_foods = [food for food in day.get("foods", []) if self._has_capacity(food)]
+306:             best = self._best_food_candidate(available_foods, favorite_names)
+307:             if best:
+308:                 recommendations.append(
+309:                     {
+310:                         "date": day.get("date"),
+311:                         "dayOfWeek": day.get("dayOfWeek"),
+312:                         "food": best,
+313:                         "message": self._recommendation_message(day, best, favorite_names),
+314:                     }
+315:                 )
+316:         return {"recommendations": recommendations, "alreadyReserved": already_reserved, "menu": menu}
+317: 
+318:     async def _enrich_ratings(self, context: AgentContext, foods: list[dict[str, Any]]) -> None:
+319:         semaphore = asyncio.Semaphore(self.settings.rating_lookup_concurrency)
+320: 
+321:         async def enrich(item: dict[str, Any]) -> None:
+322:             plan_detail_id = item.get("planDetailId")
+323:             if not plan_detail_id:
+324:                 return
+325:             try:
+326:                 async with semaphore:
+327:                     rating = await self.get_rating(context, reserve_id=0, plan_detail_id=plan_detail_id)
+328:                 data = _unwrap(rating)
+329:                 item["ratingSummary"] = self._rating_summary(data if isinstance(data, dict) else {})
+330:             except Exception as exc:
+331:                 logger.warning("Food rating lookup failed plan_detail_id=%s error=%s", plan_detail_id, type(exc).__name__)
+332: 
+333:         await asyncio.gather(*(enrich(food) for food in foods))
+334: 
+335:     async def _safe_history(self, context: AgentContext) -> list[dict[str, Any]]:
+336:         try:
+337:             return await self.get_history(context)
+338:         except Exception as exc:
+339:             logger.warning("Food history lookup failed error=%s", type(exc).__name__)
+340:             return []
+341: 
+342: 
+343:     async def _write_weekly_inspection(
+344:         self,
+345:         *,
+346:         context: AgentContext,
+347:         menu: dict[str, Any],
+348:         history: list[dict[str, Any]],
+349:     ) -> None:
+350:         try:
+351:             inspection_payload = {
+352:                 "employeeIdMasked": _mask_employee_id(
+353:                     context.employee_id
+354:                 ),
+355:                 "restaurantId": context.restaurant_id,
+356:                 "mealId": context.meal_id,
+357:                 "menu": menu,
+358:                 "history": history,
+359:             }
+360: 
+361:             sanitized_payload = (
+362:                 _sanitize_inspection_value(
+363:                     inspection_payload
+364:                 )
+365:             )
+366: 
+367:             output_text = json.dumps(
+368:                 sanitized_payload,
+369:                 ensure_ascii=False,
+370:                 indent=2,
+371:                 default=str,
+372:             )
+373: 
+374:             await asyncio.to_thread(
+375:                 WEEKLY_FOOD_INSPECTION_FILE.write_text,
+376:                 output_text,
+377:                 encoding="utf-8",
+378:             )
+379: 
+380:             logger.info(
+381:                 "Weekly food inspection saved path=%s",
+382:                 WEEKLY_FOOD_INSPECTION_FILE,
+383:             )
+384: 
+385:         except Exception as exc:
+386:             logger.warning(
+387:                 "Weekly food inspection failed "
+388:                 "error=%s",
+389:                 type(exc).__name__,
+390:             )
+391: 
+392:     def _normalize_day(self, day: dict[str, Any]) -> dict[str, Any]:
+393:         details = day.get("details") or day.get("foods") or day.get("items") or []
+394:         foods = []
+395:         for detail in details if isinstance(details, list) else []:
+396:             if not isinstance(detail, dict):
+397:                 continue
+398:             foods.append(
+399:                 {
+400:                     "planDetailId": _detail_id(detail),
+401:                     "planId": detail.get("planId") or day.get("id") or day.get("planId"),
+402:                     "foodName": detail.get("foodName") or detail.get("name") or detail.get("title") or "",
+403:                     "description": detail.get("description") or detail.get("foodDescription") or "",
+404:                     "sideDishesName": detail.get("sideDishesName") or "",
+405:                     "imageName": detail.get("imageName") or detail.get("foodImageName"),
+406:                     "count": parse_int(detail.get("count")),
+407:                     "remainCount": parse_int(detail.get("remainCount")),
+408:                     "rate": parse_float(detail.get("rate")),
+409:                 }
+410:             )
+411:         return {
+412:             "planId": day.get("id") or day.get("planId"),
+413:             "date": day.get("date") or day.get("jalaliDate") or "",
+414:             "miladyDate": day.get("miladyDate"),
+415:             "dayOfWeek": day.get("dayOfWeek") or day.get("dayName") or "",
+416:             "selectedPlanDetailId": day.get("selectedPlanDetailId") or day.get("selectedPlanDetailID"),
+417:             "foods": foods,
+418:         }
+419: 
+420:     @staticmethod
+421:     def _normalize_history(item: dict[str, Any]) -> dict[str, Any]:
+422:         return {
+423:             "reserveId": item.get("reserveId") or item.get("id"),
+424:             "planDetailId": item.get("planDetailId"),
+425:             "foodName": item.get("foodName") or item.get("name") or "",
+426:             "date": item.get("date") or item.get("reserveDate"),
+427:         }
+428: 
+429:     @staticmethod
+430:     def _favorite_food_names(history: list[dict[str, Any]]) -> list[str]:
+431:         counter: Counter[str] = Counter()
+432:         for item in history:
+433:             name = str(item.get("foodName") or "").strip()
+434:             if name:
+435:                 counter[name] += 1
+436:         return [name for name, _ in counter.most_common(5)]
+437: 
+438:     @staticmethod
+439:     def _rating_summary(data: dict[str, Any]) -> dict[str, Any]:
+440:         rating_list = data.get("ratingList") or []
+441:         total_count = 0
+442:         weighted = 0
+443:         for row in rating_list if isinstance(rating_list, list) else []:
+444:             if not isinstance(row, dict):
+445:                 continue
+446:             stars = parse_int(row.get("id"))
+447:             count = parse_int(row.get("title"), 0)
+448:             if stars is None or count is None:
+449:                 continue
+450:             total_count += count
+451:             weighted += stars * count
+452:         fallback_rate = parse_float(data.get("rate"))
+453:         average = round(weighted / total_count, 2) if total_count else fallback_rate
+454:         comments = data.get("commentsList") or []
+455:         return {"averageRate": average, "voteCount": total_count, "commentsCount": len(comments) if isinstance(comments, list) else 0}
+456: 
+457:     @staticmethod
+458:     def _has_capacity(food: dict[str, Any]) -> bool:
+459:         remain = parse_int(food.get("remainCount"))
+460:         return remain is None or remain > 0
+461: 
+462:     def _best_food_candidate(self, foods: list[dict[str, Any]], favorite_names: list[str]) -> dict[str, Any] | None:
+463:         if not foods:
+464:             return None
+465:         favorite_set = {name.strip() for name in favorite_names}
+466:         scored: list[tuple[float, dict[str, Any]]] = []
+467:         for item in foods:
+468:             rating = item.get("ratingSummary") or {}
+469:             average = parse_float(rating.get("averageRate") or item.get("rate"))
+470:             vote_count = parse_int(rating.get("voteCount"), 0) or 0
+471:             remain = parse_int(item.get("remainCount"))
+472:             favorite_bonus = 1.5 if item.get("foodName") in favorite_set else 0
+473:             capacity_bonus = 0.3 if remain is None or remain > self.settings.low_capacity_threshold else 0
+474:             score = average + favorite_bonus + min(vote_count, 20) * 0.02 + capacity_bonus
+475:             scored.append((score, item))
+476:         return max(scored, key=lambda pair: pair[0])[1]
+477: 
+478:     def _recommendation_message(self, day: dict[str, Any], food: dict[str, Any], favorite_names: list[str]) -> str:
+479:         name = food.get("foodName") or "این غذا"
+480:         target_date = day.get("date") or "این روز"
+481:         rating = food.get("ratingSummary") or {}
+482:         average = parse_float(rating.get("averageRate") or food.get("rate"))
+483:         vote_count = parse_int(rating.get("voteCount"), 0) or 0
+484:         remain = parse_int(food.get("remainCount"))
+485:         parts = [f"برای {target_date}، «{name}» {'که قبلاً انتخابش کرده‌ای ' if name in set(favorite_names) else ''}گزینه پیشنهادی است."]
+486:         if average:
+487:             parts.append(f"امتیاز آن {average:g} از ۵" + (f" بر اساس {vote_count} رأی" if vote_count else "") + " است.")
+488:         if remain is not None and remain <= self.settings.low_capacity_threshold:
+489:             parts.append(f"فقط {remain} ظرفیت باقی مانده است.")
+490:         parts.append("در صورت تأیید، رزرو واقعی انجام می‌شود.")
+491:         return " ".join(parts)

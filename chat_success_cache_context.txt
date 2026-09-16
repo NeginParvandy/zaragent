@@ -1,0 +1,306 @@
+
+=== TOP ===
+1: from __future__ import annotations
+2: 
+3: import asyncio
+4: import re
+5: from typing import Any
+6: 
+7: from app.application.services.action_service import ActionService
+8: from app.application.services.daily_brief_service import DailyBriefService
+9: from app.application.services.food_service import FoodService
+10: from app.application.services.hr_service import HrService
+11: from app.application.services.leave_balance_formatter import format_leave_balance_reply
+12: from app.application.services.intent_guard import IntentGuard
+13: from app.application.services.nlu_core import (
+14:     analyze_message,
+15:     normalize_text as normalize_nlu_text,
+16: )
+17: from app.core.exceptions import AppError
+18: from app.domain.models import AgentContext
+19: from app.domain.text import (
+20:     extract_jalali_dates,
+21:     extract_times,
+22:     hours_between,
+23:     normalize_persian_text,
+24:     parse_bool,
+25:     parse_int,
+26:     validate_jalali_range,
+27: )
+28: from app.infrastructure.repositories.state_repository import StateRepository
+29: 
+30: 
+31: FOOD_RESTAURANT_CONFIRM_STATE = "food_restaurant_confirmation"
+32: FOOD_RESTAURANT_SELECT_STATE = "food_restaurant_selection"
+33: FOOD_CHAT_STATE_TTL_MINUTES = 10
+34: CONVERSATION_STATE = "conversation"
+35: CONVERSATION_STATE_TTL_MINUTES = 30
+36: FOOD_MEAL_ID = 1
+37: 
+38: 
+39: class ChatService:
+40:     def __init__(
+41:         self,
+42:         food: FoodService,
+43:         hr: HrService,
+44:         actions: ActionService,
+45:         daily_brief: DailyBriefService,
+46:         repository: StateRepository,
+47:     ):
+48:         self.food = food
+49:         self.hr = hr
+50:         self.actions = actions
+51:         self.daily_brief = daily_brief
+52:         self.repository = repository
+53:         self.intent_guard = IntentGuard()
+54: 
+55:     async def handle(
+56:         self,
+57:         context: AgentContext,
+58:         message: str,
+59:     ) -> dict[str, Any]:
+60:         text = normalize_persian_text(message)
+61: 
+62:         intent_decision = self.intent_guard.analyze(
+63:             text
+64:         )
+65: 
+66:         if not intent_decision.allowed:
+67:             return intent_decision.to_response()
+68: 
+69:         pending_state_response = (
+70:             await self._handle_pending_chat_state(
+71:                 context,
+72:                 text,
+73:             )
+74:         )
+75: 
+76:         if pending_state_response is not None:
+77:             return pending_state_response
+78: 
+79:         conversation_payload = (
+80:             await self._load_conversation_payload(
+81:                 context
+82:             )
+83:         )
+84: 
+85:         context, selected_restaurant = (
+86:             self._apply_saved_restaurant(
+87:                 context,
+88:                 conversation_payload,
+89:             )
+90:         )
+91: 
+92:         control_response = (
+93:             await self._handle_pending_action_reply(
+94:                 context,
+95:                 text,
+96:                 conversation_payload,
+97:             )
+98:         )
+99: 
+100:         if control_response is not None:
+101:             return control_response
+102: 
+103:         if self._is_help(text):
+104:             return self._help_response()
+105: 
+106:         if self._is_daily_brief(text):
+107:             data = await self.daily_brief.build(
+108:                 context
+109:             )
+110: 
+111:             return {
+112:                 "reply": (
+113:                     data.get("summary")
+114:                     or "گزارش روزانه آماده شد."
+115:                 ),
+116:                 "requiresConfirmation": False,
+117:                 "data": data,
+118:             }
+119: 
+120:         if self._is_greeting(text):
+121:             name = (
+122:                 f" {context.display_name}"
+123:                 if context.display_name
+124:                 else ""
+125:             )
+126: 
+127:             return {
+128:                 "reply": (
+129:                     f"سلام{name}. آماده‌ام امور غذا، مرخصی، "
+130:                     "مأموریت و تردد را برایت بررسی کنم."
+131:                 ),
+132:                 "requiresConfirmation": False,
+133:                 "suggestions": self._suggestions(),
+134:             }
+135: 
+136:         reference_date = str(
+137:             context.date or ""
+138:         ).strip()
+139: 
+140:         previous_nlu_state = (
+
+=== STATE ===
+819:         )
+820: 
+821:         return {
+822:             "reply": message,
+823:             "requiresConfirmation": False,
+824:             "data": {
+825:                 "conversationCancelled": True,
+826:             },
+827:         }
+828: 
+829:     async def _load_conversation_payload(
+830:         self,
+831:         context: AgentContext,
+832:     ) -> dict[str, Any]:
+833:         employee_id = str(
+834:             context.employee_id or ""
+835:         ).strip()
+836: 
+837:         if not employee_id:
+838:             return {}
+839: 
+840:         state = await asyncio.to_thread(
+841:             self.repository.get_chat_state,
+842:             employee_id,
+843:             context.conversation_id,
+844:         )
+845: 
+846:         if not state:
+847:             return {}
+848: 
+849:         if str(
+850:             state.get("stateType") or ""
+851:         ) != CONVERSATION_STATE:
+852:             return {}
+853: 
+854:         payload = state.get("payload")
+855: 
+856:         return (
+857:             dict(payload)
+858:             if isinstance(payload, dict)
+859:             else {}
+860:         )
+861: 
+862:     async def _save_conversation_payload(
+863:         self,
+864:         context: AgentContext,
+865:         payload: dict[str, Any],
+866:     ) -> None:
+867:         employee_id = str(
+868:             context.employee_id or ""
+869:         ).strip()
+870: 
+871:         if not employee_id:
+872:             return
+873: 
+874:         await asyncio.to_thread(
+875:             self.repository.save_chat_state,
+876:             employee_id,
+877:             CONVERSATION_STATE,
+878:             payload,
+879:             CONVERSATION_STATE_TTL_MINUTES,
+880:             context.conversation_id,
+881:         )
+882: 
+883:     async def _delete_conversation_state(
+884:         self,
+885:         context: AgentContext,
+886:     ) -> None:
+887:         employee_id = str(
+888:             context.employee_id or ""
+889:         ).strip()
+890: 
+891:         if not employee_id:
+892:             return
+893: 
+894:         await asyncio.to_thread(
+895:             self.repository.delete_chat_state,
+896:             employee_id,
+897:             context.conversation_id,
+898:         )
+899: 
+900:     @staticmethod
+901:     def _apply_saved_restaurant(
+902:         context: AgentContext,
+903:         conversation_payload: dict[str, Any],
+
+=== SUCCESS_REPLY ===
+1816: 
+1817:         if normalized in reject_phrases:
+1818:             return "reject"
+1819: 
+1820:         if normalized in cancel_phrases:
+1821:             return "cancel"
+1822: 
+1823:         return None
+1824: 
+1825:     @staticmethod
+1826:     def _action_success_reply(
+1827:         action_type: str,
+1828:     ) -> str:
+1829:         messages = {
+1830:             "RESERVE_FOOD": (
+1831:                 "رزرو غذا با موفقیت انجام شد."
+1832:             ),
+1833:             "CANCEL_FOOD": (
+1834:                 "رزرو غذا با موفقیت لغو شد."
+1835:             ),
+1836:             "RATE_FOOD": (
+1837:                 "امتیاز غذا با موفقیت ثبت شد."
+1838:             ),
+1839:             "CREATE_LEAVE": (
+1840:                 "درخواست با موفقیت ثبت شد."
+1841:             ),
+1842:             "DELETE_LEAVE": (
+1843:                 "درخواست با موفقیت حذف شد."
+1844:             ),
+1845:             "CREATE_TIME_EVENT": (
+1846:                 "تردد با موفقیت ثبت شد."
+1847:             ),
+1848:         }
+1849: 
+1850:         return messages.get(
+1851:             action_type,
+1852:             "عملیات با موفقیت انجام شد.",
+1853:         )
+1854: 
+1855:     async def _handle_pending_chat_state(
+1856:         self,
+1857:         context: AgentContext,
+1858:         text: str,
+1859:     ) -> dict[str, Any] | None:
+1860:         employee_id = str(
+1861:             context.employee_id or ""
+1862:         ).strip()
+1863: 
+1864:         if not employee_id:
+1865:             return None
+1866: 
+1867:         conversation_id = (
+1868:             context.conversation_id
+1869:         )
+1870: 
+1871:         state = await asyncio.to_thread(
+1872:             self.repository.get_chat_state,
+1873:             employee_id,
+1874:             conversation_id,
+1875:         )
+1876: 
+1877:         if not state:
+1878:             return None
+1879: 
+1880:         state_type = str(
+1881:             state.get("stateType") or ""
+1882:         ).strip()
+1883:         payload = state.get("payload") or {}
+1884: 
+1885:         if not isinstance(payload, dict):
+1886:             await asyncio.to_thread(
+1887:                 self.repository.delete_chat_state,
+1888:                 employee_id,
+1889:                 conversation_id,
+1890:             )

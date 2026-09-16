@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Runtime / local state
+.env
+.env.backup
+logs/
+data/*.db
+data/*.db-*
+
+# Generated project evidence
+probe_outputs/
+monthly_attendance_outputs/
+monthly_attendance_chat_states/
+monthly_attendance_workflows/
+
+# Local backups and archives
+*.bak
+*.bak_*
+*.before_*.bak
+_archive/
+
+# IDE
+.idea/
+.vscode/

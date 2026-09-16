@@ -1,0 +1,484 @@
+
+=== CHAT_STATE ===
+1845:             "CREATE_TIME_EVENT": (
+1846:                 "تردد با موفقیت ثبت شد."
+1847:             ),
+1848:         }
+1849: 
+1850:         return messages.get(
+1851:             action_type,
+1852:             "عملیات با موفقیت انجام شد.",
+1853:         )
+1854: 
+1855:     async def _handle_pending_chat_state(
+1856:         self,
+1857:         context: AgentContext,
+1858:         text: str,
+1859:     ) -> dict[str, Any] | None:
+1860:         employee_id = str(
+1861:             context.employee_id or ""
+1862:         ).strip()
+1863: 
+1864:         if not employee_id:
+1865:             return None
+1866: 
+1867:         conversation_id = (
+1868:             context.conversation_id
+1869:         )
+1870: 
+1871:         state = await asyncio.to_thread(
+1872:             self.repository.get_chat_state,
+1873:             employee_id,
+1874:             conversation_id,
+1875:         )
+1876: 
+1877:         if not state:
+1878:             return None
+1879: 
+1880:         state_type = str(
+1881:             state.get("stateType") or ""
+1882:         ).strip()
+1883:         payload = state.get("payload") or {}
+1884: 
+1885:         if not isinstance(payload, dict):
+1886:             await asyncio.to_thread(
+1887:                 self.repository.delete_chat_state,
+1888:                 employee_id,
+1889:                 conversation_id,
+1890:             )
+1891:             return None
+1892: 
+1893:         if state_type == CONVERSATION_STATE:
+1894:             return None
+1895: 
+1896:         if state_type not in {
+1897:             FOOD_RESTAURANT_CONFIRM_STATE,
+1898:             FOOD_RESTAURANT_SELECT_STATE,
+1899:         }:
+1900:             await asyncio.to_thread(
+1901:                 self.repository.delete_chat_state,
+1902:                 employee_id,
+1903:                 conversation_id,
+1904:             )
+1905:             return None
+1906: 
+1907:         restaurants = payload.get(
+1908:             "restaurants"
+1909:         ) or []
+1910:         restaurants = [
+1911:             item
+1912:             for item in restaurants
+1913:             if isinstance(item, dict)
+1914:             and parse_int(
+1915:                 item.get("restaurantId")
+1916:             )
+1917:         ]
+1918: 
+1919:         if not restaurants:
+1920:             await asyncio.to_thread(
+1921:                 self.repository.delete_chat_state,
+1922:                 employee_id,
+1923:                 conversation_id,
+1924:             )
+1925:             return None
+1926: 
+1927:         reply_kind = (
+1928:             self._pending_action_reply_kind(
+1929:                 text
+1930:             )
+1931:         )
+1932: 
+1933:         if reply_kind in {
+1934:             "reject",
+1935:             "cancel",
+1936:         }:
+1937:             await asyncio.to_thread(
+1938:                 self.repository.delete_chat_state,
+1939:                 employee_id,
+1940:                 conversation_id,
+1941:             )
+1942: 
+1943:             previous_payload = payload.get(
+1944:                 "conversationPayload"
+1945:             )
+1946: 
+1947:             if isinstance(
+1948:                 previous_payload,
+1949:                 dict,
+1950:             ) and previous_payload:
+1951:                 await self._save_conversation_payload(
+1952:                     context,
+1953:                     previous_payload,
+1954:                 )
+1955: 
+1956:             return {
+1957:                 "reply": (
+1958:                     "باشه، این رستوران انتخاب نشد. "
+1959:                     "می‌توانید درخواست دیگری بفرستید."
+1960:                     if reply_kind == "reject"
+1961:                     else (
+1962:                         "فرایند انتخاب رستوران "
+1963:                         "لغو شد."
+1964:                     )
+1965:                 ),
+1966:                 "requiresConfirmation": False,
+1967:             }
+1968: 
+1969:         selected_restaurant = (
+1970:             self._match_restaurant_reply(
+1971:                 text,
+1972:                 restaurants,
+1973:             )
+1974:         )
+1975: 
+1976:         if (
+1977:             state_type
+1978:             == FOOD_RESTAURANT_CONFIRM_STATE
+1979:             and selected_restaurant is None
+1980:             and self._is_positive_reply(text)
+1981:         ):
+1982:             selected_restaurant = (
+1983:                 restaurants[0]
+1984:             )
+1985: 
+1986:         if selected_restaurant is not None:
+1987:             await asyncio.to_thread(
+1988:                 self.repository.delete_chat_state,
+1989:                 employee_id,
+1990:                 conversation_id,
+1991:             )
+1992: 
+1993:             return await self._resume_food_request(
+1994:                 context,
+1995:                 payload,
+1996:                 selected_restaurant,
+1997:             )
+1998: 
+1999:         if self._looks_like_new_request(
+2000:             text
+2001:         ):
+2002:             await asyncio.to_thread(
+2003:                 self.repository.delete_chat_state,
+2004:                 employee_id,
+2005:                 conversation_id,
+2006:             )
+2007:             return None
+2008: 
+2009:         if (
+2010:             state_type
+2011:             == FOOD_RESTAURANT_CONFIRM_STATE
+2012:         ):
+2013:             restaurant = restaurants[0]
+2014: 
+2015:             return {
+2016:                 "reply": (
+2017:                     f"رستوران مجاز شما "
+2018:                     f"«{restaurant.get('restaurantName')}» است. "
+2019:                     "برای ادامه فقط «بله» یا «خیر» بفرستید."
+2020:                 ),
+2021:                 "requiresConfirmation": False,
+2022:                 "data": {
+2023:                     "awaitingRestaurantConfirmation": True,
+2024:                     "restaurant": restaurant,
+2025:                 },
+2026:             }
+2027: 
+2028:         return {
+2029:             "reply": self._restaurant_selection_prompt(
+2030:                 restaurants
+2031:             ),
+2032:             "requiresConfirmation": False,
+2033:             "data": {
+2034:                 "awaitingRestaurantSelection": True,
+2035:                 "restaurants": restaurants,
+2036:             },
+2037:         }
+2038: 
+2039:     async def _resume_food_request(
+2040:         self,
+2041:         context: AgentContext,
+2042:         payload: dict[str, Any],
+2043:         restaurant: dict[str, Any],
+2044:     ) -> dict[str, Any]:
+2045:         restaurant_id = parse_int(
+2046:             restaurant.get("restaurantId")
+2047:         )
+2048: 
+2049:         if restaurant_id is None:
+2050:             raise AppError(
+2051:                 "شناسه رستوران انتخاب‌شده معتبر نیست.",
+2052:                 code="INVALID_RESTAURANT",
+2053:             )
+2054: 
+2055:         original_message = str(
+2056:             payload.get("originalMessage")
+2057:             or "منوی غذا را نشان بده"
+2058:         )
+2059:         original_text = normalize_persian_text(
+2060:             original_message
+2061:         )
+2062: 
+2063:         target_date = payload.get(
+2064:             "targetDate"
+2065:         )
+2066:         context_date = payload.get(
+2067:             "contextDate"
+2068:         )
+2069: 
+2070:         context_updates: dict[str, Any] = {
+2071:             "restaurant_id": restaurant_id,
+2072:             "meal_id": FOOD_MEAL_ID,
+2073:         }
+2074: 
+2075:         if context_date:
+2076:             context_updates["date"] = (
+2077:                 context_date
+2078:             )
+2079: 
+2080:         food_context = context.model_copy(
+2081:             update=context_updates
+2082:         )
+2083: 
+2084:         dates = (
+
+=== ACTION_CONFIRM ===
+132:             employee_id,
+133:         )
+134: 
+135:         if not state:
+136:             raise NotFoundError(
+137:                 "عملیات پیدا نشد یا متعلق به این کاربر نیست."
+138:             )
+139: 
+140:         return state
+141: 
+142:     async def confirm(
+143:         self,
+144:         context: AgentContext,
+145:         action_id: str,
+146:     ) -> dict[str, Any]:
+147:         employee_id = str(
+148:             context.employee_id or ""
+149:         )
+150: 
+151:         record = await asyncio.to_thread(
+152:             self.repository.claim_pending_action,
+153:             action_id,
+154:             employee_id,
+155:         )
+156: 
+157:         if not record:
+158:             current = await asyncio.to_thread(
+159:                 self.repository.get_pending_action,
+160:                 action_id,
+161:                 employee_id or None,
+162:             )
+163: 
+164:             if not current:
+165:                 raise NotFoundError(
+166:                     "عملیات در انتظار پیدا نشد یا متعلق به این کاربر نیست."
+167:                 )
+168: 
+169:             if current.status == "expired":
+170:                 raise ConflictError(
+171:                     "مهلت تأیید این عملیات تمام شده است.",
+172:                     details={
+173:                         "status": current.status,
+174:                     },
+175:                 )
+176: 
+177:             raise ConflictError(
+178:                 "این عملیات قبلاً پردازش یا در حال پردازش است.",
+179:                 details={
+180:                     "status": current.status,
+181:                 },
+182:             )
+183: 
+184:         try:
+185:             self._validate_payload(
+186:                 record.action_type,
+187:                 record.payload,
+188:             )
+189: 
+190:             result = await self._execute(
+191:                 context,
+192:                 record.action_type,
+193:                 record.payload,
+194:                 record.idempotency_key,
+195:             )
+196: 
+197:         except IntegrationError as exc:
+198:             final_status = (
+199:                 "unknown"
+200:                 if exc.code in UNCERTAIN_INTEGRATION_CODES
+201:                 else "failed"
+202:             )
+203: 
+204:             await asyncio.to_thread(
+205:                 self.repository.complete_pending_action,
+206:                 action_id,
+207:                 final_status,
+208:                 error_message=exc.code,
+209:             )
+210: 
+211:             if final_status == "unknown":
+212:                 raise AppError(
+213:                     (
+214:                         "نتیجه عملیات به دلیل قطع یا پاسخ نامعتبر "
+215:                         "سرویس مقصد مشخص نیست. دوباره تأیید نکنید "
+216:                         "و وضعیت را بررسی کنید."
+217:                     ),
+218:                     status_code=409,
+219:                     code="ACTION_RESULT_UNKNOWN",
+220:                     details={
+221:                         "actionId": action_id,
+222:                         "sourceCode": exc.code,
+223:                     },
+224:                 ) from exc
+225: 
+226:             raise
+227: 
+228:         except AppError as exc:
+229:             await asyncio.to_thread(
+230:                 self.repository.complete_pending_action,
+231:                 action_id,
+232:                 "failed",
+233:                 error_message=exc.code,
+234:             )
+235:             raise
+236: 
+237:         except Exception as exc:
+238:             logger.exception(
+239:                 "Unexpected action execution failure action_id=%s",
+240:                 action_id,
+241:             )
+242: 
+243:             await asyncio.to_thread(
+244:                 self.repository.complete_pending_action,
+245:                 action_id,
+246:                 "unknown",
+247:                 error_message=type(exc).__name__,
+248:             )
+249: 
+250:             raise AppError(
+251:                 (
+252:                     "وضعیت نتیجه عملیات نامطمئن است. عملیات را "
+253:                     "دوباره اجرا نکنید و وضعیت را بررسی کنید."
+254:                 ),
+255:                 status_code=500,
+256:                 code="ACTION_RESULT_UNKNOWN",
+257:                 details={
+258:                     "actionId": action_id,
+259:                 },
+260:             ) from exc
+261: 
+262:         try:
+263:             completed = await asyncio.to_thread(
+264:                 self.repository.complete_pending_action,
+265:                 action_id,
+266:                 "succeeded",
+267:                 result=result,
+268:             )
+269: 
+270:         except Exception as exc:
+271:             logger.critical(
+272:                 "Action completion persistence failed action_id=%s",
+273:                 action_id,
+274:                 exc_info=True,
+275:             )
+276: 
+277:             try:
+278:                 await asyncio.to_thread(
+279:                     self.repository.complete_pending_action,
+280:                     action_id,
+281:                     "unknown",
+282:                     error_message=type(exc).__name__,
+283:                 )
+284:             except Exception:
+285:                 logger.exception(
+286:                     "Could not mark action unknown action_id=%s",
+287:                     action_id,
+288:                 )
+289: 
+290:             raise AppError(
+291:                 (
+292:                     "عملیات اجرا شد اما ثبت نتیجه نهایی نامطمئن "
+293:                     "است. عملیات را دوباره اجرا نکنید."
+294:                 ),
+295:                 status_code=500,
+296:                 code="ACTION_RESULT_UNKNOWN",
+297:                 details={
+298:                     "actionId": action_id,
+299:                 },
+300:             ) from exc
+301: 
+302:         if not completed:
+303:             persisted_state = await asyncio.to_thread(
+304:                 self.repository.get_action_state,
+305:                 action_id,
+306:                 employee_id,
+307:             )
+308: 
+309:             if (
+310:                 persisted_state
+311:                 and persisted_state.get("status") == "succeeded"
+312:             ):
+313:                 return persisted_state
+314: 
+315:             await asyncio.to_thread(
+316:                 self.repository.complete_pending_action,
+317:                 action_id,
+318:                 "unknown",
+319:                 error_message="RESULT_PERSISTENCE_CONFLICT",
+320:             )
+321: 
+322:             raise AppError(
+323:                 (
+324:                     "عملیات اجرا شد اما وضعیت نهایی نامطمئن است. "
+325:                     "عملیات را دوباره اجرا نکنید."
+326:                 ),
+327:                 status_code=500,
+328:                 code="ACTION_RESULT_UNKNOWN",
+329:                 details={
+330:                     "actionId": action_id,
+331:                 },
+332:             )
+333: 
+334:         return {
+335:             "actionId": action_id,
+336:             "actionType": record.action_type,
+337:             "status": "succeeded",
+338:             "result": result,
+339:         }
+340: 
+341:     async def cancel(
+342:         self,
+343:         context: AgentContext,
+344:         action_id: str,
+345:     ) -> dict[str, Any]:
+346:         employee_id = str(
+347:             context.employee_id or ""
+348:         ).strip()
+349: 
+350:         if not employee_id:
+351:             raise AppError(
+352:                 "کد پرسنلی کاربر مشخص نیست.",
+353:                 code="MISSING_EMPLOYEE_ID",
+354:             )
+355: 
+356:         current = await asyncio.to_thread(
+357:             self.repository.get_pending_action,
+358:             action_id,
+359:             employee_id,
+360:         )
+361: 
+362:         if not current:
+363:             raise NotFoundError(
+364:                 "عملیات پیدا نشد یا متعلق به این کاربر نیست."
+365:             )
+366: 
+367:         if current.status == "pending":
+368:             cancelled = await asyncio.to_thread(
+369:                 self.repository.cancel_pending_action,
+370:                 action_id,
+371:                 employee_id,

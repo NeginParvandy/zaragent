@@ -1,0 +1,230 @@
+455:         employee_id
+456:     )
+457: 
+458:     return ok(
+459:         data,
+460:         "لیست یادآوری‌ها دریافت شد.",
+461:     )
+462: 
+463: 
+464: @router.post(
+465:     "/chat",
+466:     response_model=ApiResponse[dict[str, Any]],
+467: )
+468: async def chat(
+469:     request: ChatRequest,
+470:     identity: GatewayIdentity = Depends(
+471:         require_user_identity
+472:     ),
+473: ) -> dict[str, Any]:
+474:     container = get_container()
+475: 
+476:     if request.context is not None:
+477:         raw_context = request.context.to_context()
+478:     else:
+479:         raw_context = AgentContext()
+480: 
+481:     if (
+482:         not raw_context.conversation_id
+483:         and request.conversation_id
+484:     ):
+485:         raw_context.conversation_id = (
+486:             request.conversation_id
+487:         )
+488: 
+489:     context = container.context_resolver.resolve(
+490:         raw_context,
+491:         identity,
+492:     )
+493: 
+494:     container.context_resolver.require_employee(
+495:         context
+496:     )
+497: 
+498:     if not context.conversation_id:
+499:         context.conversation_id = (
+500:             _fallback_conversation_id(
+501:                 context,
+502:                 identity,
+503:             )
+504:         )
+505: 
+506:     context = _apply_pilot_hr_override(
+507:         context
+508:     )
+509: 
+510:     session = context.session
+511: 
+512:     logger.info(
+513:         (
+514:             "CHAT_TRACE_START employee_id=%s "
+515:             "conversation_id=%s message_length=%s "
+516:             "has_token=%s has_username_hash=%s "
+517:             "has_password_hash=%s has_digit_code=%s"
+518:         ),
+519:         context.employee_id,
+520:         context.conversation_id,
+521:         len(request.message or ""),
+522:         bool(session and session.authorization_token),
+523:         bool(session and session.username_hash),
+524:         bool(session and session.password_hash),
+525:         bool(session and session.digit_code),
+526:     )
+527: 
+528:     try:
+529:         data = await container.chat_service.handle(
+530:             context,
+531:             request.message,
+532:         )
+533:     except IntegrationError as exc:
+534:         details = getattr(
+535:             exc,
+536:             "details",
+537:             None,
+538:         ) or {}
+539: 
+540:         downstream_path = str(
+541:             details.get(
+542:                 "path",
+543:                 "",
+544:             )
+545:         )
+546: 
+547:         downstream_status = details.get(
+548:             "downstreamStatusCode"
+549:         )
+550: 
+551:         if (
+552:             downstream_path.endswith(
+553:                 "/PostTimeEventSet"
+554:             )
+555:             and downstream_status == 400
+556:         ):
+557:             # HR_BUSINESS_MESSAGE_FUTURE_ATTENDANCE
+558:             logger.warning(
+559:                 (
+560:                     "HR_BUSINESS_MESSAGE_FUTURE_ATTENDANCE "
+561:                     "employee_id=%s conversation_id=%s"
+562:                 ),
+563:                 context.employee_id,
+564:                 context.conversation_id,
+565:             )
+566: 
+567:             data = {
+568:                 "reply": (
+569:                     "ثبت تردد انجام نشد. "
+570:                     "امکان ثبت تردد برای روزهای آینده وجود ندارد. "
+571:                     "لطفاً تاریخ امروز یا یکی از روزهای گذشته را وارد کنید."
+572:                 ),
+573:                 "requiresConfirmation": False,
+574:                 "pendingAction": None,
+575:                 "data": None,
+576:             }
+577:         else:
+578:             logger.exception(
+579:                 (
+580:                     "CHAT_TRACE_FAILURE employee_id=%s "
+581:                     "conversation_id=%s exception_type=%s "
+582:                     "code=%s status_code=%s details=%r"
+583:                 ),
+584:                 context.employee_id,
+585:                 context.conversation_id,
+586:                 type(exc).__name__,
+587:                 getattr(
+588:                     exc,
+589:                     "code",
+590:                     None,
+591:                 ),
+592:                 getattr(
+593:                     exc,
+594:                     "status_code",
+595:                     None,
+596:                 ),
+597:                 details,
+598:             )
+599:             raise
+600:     except Exception as exc:
+601:         logger.exception(
+602:             (
+603:                 "CHAT_TRACE_FAILURE employee_id=%s "
+604:                 "conversation_id=%s exception_type=%s "
+605:                 "code=%s status_code=%s details=%r"
+606:             ),
+607:             context.employee_id,
+608:             context.conversation_id,
+609:             type(exc).__name__,
+610:             getattr(exc, "code", None),
+611:             getattr(exc, "status_code", None),
+612:             getattr(exc, "details", None),
+613:         )
+614:         raise
+615: 
+616:     logger.info(
+617:         (
+618:             "CHAT_TRACE_SUCCESS employee_id=%s "
+619:             "conversation_id=%s keys=%s "
+620:             "requires_confirmation=%s "
+621:             "pending_action_present=%s"
+622:         ),
+623:         context.employee_id,
+624:         context.conversation_id,
+625:         sorted(data.keys()) if isinstance(data, dict) else [],
+626:         (
+627:             data.get("requiresConfirmation")
+628:             if isinstance(data, dict)
+629:             else None
+630:         ),
+631:         (
+632:             bool(data.get("pendingAction"))
+633:             if isinstance(data, dict)
+634:             else False
+635:         ),
+636:     )
+637: 
+638:     # Compatibility shim for the current .NET AgentData contract.
+639:     if (
+640:         isinstance(data, dict)
+641:         and data.get("data") is not None
+642:     ):
+643:         data = dict(data)
+644:         data["data"] = None
+645: 
+646:     return ok(
+647:         data,
+648:         "پاسخ Agent آماده شد.",
+649:     )
+650: 
+651: 
+652: @router.post(
+653:     "/action/confirm",
+654:     response_model=ApiResponse[dict[str, Any]],
+655: )
+656: async def confirm_action(
+657:     request: ConfirmActionRequest,
+658:     identity: GatewayIdentity = Depends(
+659:         require_user_identity
+660:     ),
+661: ) -> dict[str, Any]:
+662:     container = get_container()
+663: 
+664:     context = container.context_resolver.resolve(
+665:         request.to_context(
+666:             session=request.session,
+667:         ),
+668:         identity,
+669:     )
+670: 
+671:     container.context_resolver.require_employee(
+672:         context
+673:     )
+674: 
+675:     data = await container.action_service.confirm(
+676:         context,
+677:         request.action_id,
+678:     )
+679: 
+680:     return ok(
+681:         data,
+682:         "عملیات تأیید و اجرا شد.",
+683:     )
+684: 

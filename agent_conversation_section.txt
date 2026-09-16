@@ -1,0 +1,70 @@
+211: ) -> str | None:
+212:     """
+213:     Build a stable conversation id for legacy callers that do not
+214:     send conversationId (for example the current .NET bridge).
+215: 
+216:     The raw token is never stored. Only a short SHA-256 digest is
+217:     used, so two requests from the same login session share state
+218:     while different sessions stay isolated.
+219:     """
+220:     token = str(
+221:         identity.authorization_token or ""
+222:     ).strip()
+223: 
+224:     if (
+225:         not token
+226:         and context.session is not None
+227:         and context.session.authorization_token is not None
+228:     ):
+229:         token = (
+230:             context.session.authorization_token
+231:             .get_secret_value()
+232:             .strip()
+233:         )
+234: 
+235:     if token.lower().startswith("bearer "):
+236:         token = token[7:].strip()
+237: 
+238:     if token:
+239:         digest = hashlib.sha256(
+240:             token.encode("utf-8")
+241:         ).hexdigest()[:32]
+242:         return f"bridge-{digest}"
+243: 
+244:     employee_id = str(
+245:         context.employee_id or ""
+246:     ).strip()
+247: 
+248:     if employee_id:
+249:         return f"employee-{employee_id}"
+250: 
+251:     return None
+252: 
+253: 
+254: @router.get(
+255:     "/live",
+256:     response_model=ApiResponse[dict[str, Any]],
+257: )
+258: async def live() -> dict[str, Any]:
+259:     return ok(
+260:         {
+261:             "status": "ok",
+262:         },
+263:         "سرویس فعال است.",
+264:     )
+265: 
+266: 
+267: @router.get(
+268:     "/ready",
+269:     response_model=ApiResponse[dict[str, Any]],
+270: )
+271: async def ready() -> dict[str, Any]:
+272:     container = get_container()
+273: 
+274:     database = await asyncio.to_thread(
+275:         container.repository.health_check
+276:     )
+277: 
+278:     return ok(
+279:         {
+280:             "status": "ready",

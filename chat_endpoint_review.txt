@@ -1,0 +1,177 @@
+﻿================ agent.py lines 1-45 ================
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+from fastapi import APIRouter, Depends
+
+from app.api.dependencies import (
+    GatewayIdentity,
+    require_user_identity,
+)
+from app.application.container import get_container
+from app.core.response import ok
+from app.core.time import local_now
+from app.domain.models import (
+    ActionStatusRequest,
+    AgentContext,
+    ApiResponse,
+    CancelActionRequest,
+    ChatRequest,
+    ConfirmActionRequest,
+    DailyBriefRequest,
+    ReminderCheckRequest,
+    ReminderListRequest,
+)
+
+router = APIRouter(
+    prefix="/api/agent",
+    tags=["Agent"],
+)
+
+
+@router.get(
+    "/live",
+    response_model=ApiResponse[dict[str, Any]],
+)
+async def live() -> dict[str, Any]:
+    return ok(
+        {
+            "status": "ok",
+        },
+        "سرویس فعال است.",
+    )
+
+
+
+================ agent.py lines 225-275 ================
+        )
+    )
+
+    data = await container.reminder_service.list_reminders(
+        employee_id
+    )
+
+    return ok(
+        data,
+        "لیست یادآوری‌ها دریافت شد.",
+    )
+
+
+@router.post(
+    "/chat",
+    response_model=ApiResponse[dict[str, Any]],
+)
+async def chat(
+    request: ChatRequest,
+    identity: GatewayIdentity = Depends(
+        require_user_identity
+    ),
+) -> dict[str, Any]:
+    container = get_container()
+
+    if request.context is not None:
+        raw_context = request.context.to_context()
+    else:
+        raw_context = AgentContext()
+
+    context = container.context_resolver.resolve(
+        raw_context,
+        identity,
+    )
+
+    container.context_resolver.require_employee(
+        context
+    )
+
+    data = await container.chat_service.handle(
+        context,
+        request.message,
+    )
+
+    return ok(
+        data,
+        "پاسخ Agent آماده شد.",
+    )
+
+
+@router.post(
+
+================ models.py lines 360-435 ================
+    pass
+
+
+class ReminderListRequest(EmployeeRequestBase):
+    """
+    Request ظ…ط®طµظˆطµ POST /api/agent/reminders.
+
+    ظˆط¶ط¹غŒطھ Reminder ط¯ط§ط®ظ„غŒ ط§ط³طھ ظˆ ظ…طµط±ظپâ€Œع©ظ†ظ†ط¯ظ‡ API
+    ظ†غŒط§ط²غŒ ط¨ظ‡ ط§ط±ط³ط§ظ„ status ظ†ط¯ط§ط±ط¯.
+    """
+
+    pass
+
+
+
+class ChatRequest(BaseModel):
+    """
+    Request ط§طµظ„غŒ Agent Chat.
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+    message: str = Field(
+        min_length=1,
+        max_length=2000,
+    )
+
+    context: ChatContextRequest | None = None
+
+    @field_validator("message")
+    @classmethod
+    def message_not_empty(
+        cls,
+        value: str,
+    ) -> str:
+        value = (value or "").strip()
+
+        if not value:
+            raise ValueError(
+                "message is required"
+            )
+
+        return value
+
+
+class ActionRequestBase(EmployeeRequestBase):
+    """
+    ظ…ط¯ظ„ ظ¾ط§غŒظ‡ ط¹ظ…ظ„غŒط§طھ Pending Action.
+    """
+
+    action_id: str = Field(
+        validation_alias=AliasChoices(
+            "actionId",
+            "id",
+        ),
+        min_length=8,
+        max_length=64,
+    )
+
+
+class ConfirmActionRequest(ActionRequestBase):
+    """
+    Confirm ط¨ط±ط§غŒ ط§ط¬ط±ط§غŒ ط¹ظ…ظ„غŒط§طھ ظˆط§ظ‚ط¹غŒ ط¨ظ‡ Session
+    ظ†غŒط§ط² ط¯ط§ط±ط¯.
+    """
+
+    session: UserSession | None = None
+
+
+class CancelActionRequest(ActionRequestBase):
+    """
+    Cancel ظپظ‚ط· actionId ظˆ employeeId ظ†غŒط§ط² ط¯ط§ط±ط¯.
+    """

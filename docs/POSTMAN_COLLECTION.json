@@ -1,0 +1,105 @@
+{
+  "info": {
+    "name": "Holding Smart Agent 2.4 - Existing Backend Contract",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://127.0.0.1:8000"},
+    {"key": "employeeId", "value": "10001234"},
+    {"key": "authorizationToken", "value": ""},
+    {"key": "usernameHash", "value": ""},
+    {"key": "passwordHash", "value": ""},
+    {"key": "digitCode", "value": "123456"},
+    {"key": "actionId", "value": ""},
+    {"key": "reminderId", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "Live",
+      "request": {"method": "GET", "url": "{{baseUrl}}/api/agent/live"}
+    },
+    {
+      "name": "Ready",
+      "request": {"method": "GET", "url": "{{baseUrl}}/api/agent/ready"}
+    },
+    {
+      "name": "Health",
+      "request": {"method": "GET", "url": "{{baseUrl}}/api/agent/health"}
+    },
+    {
+      "name": "Chat - Hello",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"سلام\",\n  \"context\": {\n    \"employeeId\": \"{{employeeId}}\",\n    \"session\": {\n      \"authorizationToken\": \"{{authorizationToken}}\",\n      \"usernameHash\": \"{{usernameHash}}\",\n      \"passwordHash\": \"{{passwordHash}}\",\n      \"digitCode\": {{digitCode}}\n    },\n    \"applicationMetadata\": {\"safeToIgnore\": true}\n  }\n}"
+        },
+        "url": "{{baseUrl}}/api/agent/chat"
+      }
+    },
+    {
+      "name": "Daily Brief",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"session\": {\n    \"authorizationToken\": \"{{authorizationToken}}\",\n    \"usernameHash\": \"{{usernameHash}}\",\n    \"passwordHash\": \"{{passwordHash}}\",\n    \"digitCode\": {{digitCode}}\n  }\n}"},
+        "url": "{{baseUrl}}/api/agent/daily-brief"
+      }
+    },
+    {
+      "name": "Check Reminders",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"includeDailyBrief\": true,\n  \"session\": {\n    \"authorizationToken\": \"{{authorizationToken}}\",\n    \"usernameHash\": \"{{usernameHash}}\",\n    \"passwordHash\": \"{{passwordHash}}\",\n    \"digitCode\": {{digitCode}}\n  }\n}"},
+        "url": "{{baseUrl}}/api/agent/reminders/check"
+      }
+    },
+    {
+      "name": "List Reminders",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"status\": \"pending\"\n}"},
+        "url": "{{baseUrl}}/api/agent/reminders"
+      }
+    },
+    {
+      "name": "Dismiss Reminder",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"reminderId\": \"{{reminderId}}\"\n}"},
+        "url": "{{baseUrl}}/api/agent/reminders/dismiss"
+      }
+    },
+    {
+      "name": "Confirm Action",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"actionId\": \"{{actionId}}\",\n  \"employeeId\": \"{{employeeId}}\",\n  \"session\": {\n    \"authorizationToken\": \"{{authorizationToken}}\",\n    \"usernameHash\": \"{{usernameHash}}\",\n    \"passwordHash\": \"{{passwordHash}}\",\n    \"digitCode\": {{digitCode}}\n  }\n}"},
+        "url": "{{baseUrl}}/api/agent/action/confirm"
+      }
+    },
+    {
+      "name": "Action Status",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"actionId\": \"{{actionId}}\",\n  \"employeeId\": \"{{employeeId}}\"\n}"},
+        "url": "{{baseUrl}}/api/agent/action/status"
+      }
+    },
+    {
+      "name": "Cancel Action",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"actionId\": \"{{actionId}}\",\n  \"employeeId\": \"{{employeeId}}\"\n}"},
+        "url": "{{baseUrl}}/api/agent/action/cancel"
+      }
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+﻿================ base_client.py ================
+        return f"{self.base_url}/{path}"
+
+    def _session(self, context: AgentContext | None) -> UserSession:
+        return context.session if context and context.session else UserSession()
+
+    def _employee_id(self, context: AgentContext | None) -> str:
+        employee_id = (context.employee_id if context else None) or self.settings.default_employee_id
+        if not employee_id:
+            raise MissingConfigurationError("ع©ط¯ ظ¾ط±ط³ظ†ظ„غŒ ع©ط§ط±ط¨ط± ط¨ظ‡ Agent ط§ط±ط³ط§ظ„ ظ†ط´ط¯ظ‡ ط§ط³طھ.", details={"field": "employeeId"})
+        return str(employee_id)
+
+    def _auth_token(self, context: AgentContext | None) -> str:
+        session = self._session(context)
+        return secret_value(session.authorization_token) or self.settings.default_auth_token.get_secret_value()
+
+    def _auth_headers(self, context: AgentContext | None) -> dict[str, str]:
+        headers = {"Accept": "application/json"}
+        token = self._auth_token(context)
+        if token:
+            headers["Authorization"] = normalize_bearer_token(token)
+        return headers
+
+    def _secrets(self, context: AgentContext | None) -> list[object]:
+        session = self._session(context)
+        return [
+            session.authorization_token,
+            session.username_hash,
+            session.password_hash,
+            session.digit_code,
+            self.settings.default_auth_token,
+            self.settings.default_username_hash,
+            self.settings.default_password_hash,
+            self.settings.default_digit_code,
+        ]
+
+    async def start(self) -> None:
+        await self._get_client()
+
+    async def close(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is not None:
+            return self._client
+        async with self._client_lock:
+            if self._client is None:
+                timeout = httpx.Timeout(
+                    timeout=self.settings.request_timeout_seconds,
+                    connect=self.settings.connect_timeout_seconds,
+                )
+                limits = httpx.Limits(max_connections=50, max_keepalive_connections=20, keepalive_expiry=30)
+                self._client = httpx.AsyncClient(
+                    timeout=timeout,
+
+================ normalize_bearer_token ================
+> def normalize_bearer_token(token: object | None) -> str:
+      raw = secret_value(token).strip()
+      if not raw:
+          return ""
+      if raw.lower().startswith("bearer "):
+          return raw
+      return f"Bearer {raw}"
+  
+  
+  def secure_equals(left: object, right: object) -> bool:
+      left_text = secret_value(left)
+      right_text = secret_value(right)
+      return bool(left_text and right_text and hmac.compare_digest(left_text, right_text))

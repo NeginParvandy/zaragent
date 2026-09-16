@@ -1,0 +1,5238 @@
+DOMAIN / CONTEXT / DATE / TIME AUDIT
+========================================================================
+Generated: 2026-07-27T10:27:22
+Root: D:\serviceAi
+Reference Jalali date: 1405/05/02
+
+TARGET BEHAVIOR
+------------------------------------------------------------------------
+- Explicit domain in the new message overrides old domain state.
+- Food, leave, mission and attendance slots never leak into each other.
+- Conversation state remains active for exactly 3 minutes and refreshes only on related continuation.
+- A short answer is resolved against the assistant's pending question before IntentGuard rejects it.
+- A bare hour such as 8 asks whether the user means morning or night.
+- 8 morning, 8 night, 8:30, 8 and forty-five minutes and Persian digits are understood.
+- 4 Mordad, Persian 4 Mordad, tomorrow, day after tomorrow and weekday expressions are understood inside the active domain.
+- Common typos such as اسحقاقی، ترد and weekday misspellings are normalized before routing.
+- Regression tests cover direct requests, domain switching and multi-turn continuations.
+
+SOURCE FILES
+------------------------------------------------------------------------
+app\application\services\chat_service.py | syntax=True | sha256=d2990dde2df1ff1b1a1785265319e396e82c10fbc3df317eb0f0784b6e5be1d4
+app\application\services\nlu_core.py | syntax=True | sha256=2dd2b2fe4d0057832e68ca2c659263ff01b88f80ed818dea18868e4c2d3fa515
+app\application\services\intent_guard.py | syntax=True | sha256=ad4f41c89af0e8870d8c73adb724a9a5808b6619aafa40a49df8914a66625db0
+app\application\services\action_service.py | syntax=True | sha256=8fba1fdc74d743c9ee259255c357fd313cac8d8a504af56cfa4d41e1b56f69d9
+app\domain\text.py | syntax=True | sha256=510f4d27ac0aafd46c6dace0ae98b024a4d164f6fc54cf6c1e42257da627296d
+app\domain\models.py | syntax=True | sha256=a790c5b4e60dbe77e8faa74ca7d1dc94a0a134e137610b3639ea39d00480659e
+app\infrastructure\repositories\state_repository.py | syntax=True | sha256=0d1bcba1b42c106ec1233b634ab8fc3217f13862c461c5f94ee9daf3c0be6ee8
+app\core\config.py | syntax=True | sha256=406384ebbbc9a13a0e8d555038caf13d8d1b7ac3cfa510949dea1a29d3cebb17
+
+NLU TEST SUMMARY
+------------------------------------------------------------------------
+{
+  "directPassed": 8,
+  "directTotal": 8,
+  "sequentialPassed": 16,
+  "sequentialTotal": 16
+}
+
+DIRECT NLU CASES
+------------------------------------------------------------------------
+{
+  "name": "leave_explicit_with_food_memory",
+  "message": "میخوام مرخصی استحقاقی ثبت کنم برای فردا",
+  "normalized": "میخوام مرخصی استحقاقی ثبت کنم برای فردا",
+  "inputState": {
+    "domain": "FOOD",
+    "intent": "RESERVE_FOOD",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "food"
+    ]
+  },
+  "expectedDomain": "LEAVE",
+  "expectedIntent": "CREATE_LEAVE",
+  "domainOk": true,
+  "intentOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/03",
+      "startDate": "1405/05/03",
+      "endDate": "1405/05/03"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/03",
+        "startDate": "1405/05/03",
+        "endDate": "1405/05/03"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "name": "leave_typo_with_food_memory",
+  "message": "مرخصی اسحقاقی برای فردا",
+  "normalized": "مرخصی استحقاقی برای فردا",
+  "inputState": {
+    "domain": "FOOD",
+    "intent": "RESERVE_FOOD",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "food"
+    ]
+  },
+  "expectedDomain": "LEAVE",
+  "expectedIntent": "CREATE_LEAVE",
+  "domainOk": true,
+  "intentOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/03",
+      "startDate": "1405/05/03",
+      "endDate": "1405/05/03"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/03",
+        "startDate": "1405/05/03",
+        "endDate": "1405/05/03"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "name": "leave_explicit",
+  "message": "ثبت مرخصی استحقاقی برای فردا",
+  "normalized": "ثبت مرخصی استحقاقی برای فردا",
+  "inputState": null,
+  "expectedDomain": "LEAVE",
+  "expectedIntent": "CREATE_LEAVE",
+  "domainOk": true,
+  "intentOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/03",
+      "startDate": "1405/05/03",
+      "endDate": "1405/05/03"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/03",
+        "startDate": "1405/05/03",
+        "endDate": "1405/05/03"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "name": "attendance_plain",
+  "message": "تردد برای فردا",
+  "normalized": "تردد برای فردا",
+  "inputState": null,
+  "expectedDomain": "ATTENDANCE",
+  "expectedIntent": null,
+  "domainOk": true,
+  "intentOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "ATTENDANCE_UNKNOWN",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "intent"
+    ],
+    "needsClarification": true,
+    "clarification": "می‌خواهید تردد این تاریخ را ثبت کنید یا سوابق تردد را ببینید؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "ATTENDANCE_UNKNOWN",
+      "entities": {
+        "date": "1405/05/03"
+      },
+      "missingFields": [
+        "intent"
+      ]
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "name": "attendance_typo_create",
+  "message": "ثبت ترد برای فردا",
+  "normalized": "ثبت تردد برای فردا",
+  "inputState": null,
+  "expectedDomain": "ATTENDANCE",
+  "expectedIntent": "CREATE_TIME_EVENT",
+  "domainOk": true,
+  "intentOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "ساعت تردد را بفرمایید؛ مثلاً ساعت ۸ صبح یا ۱۰ و ۵۰ دقیقه شب.",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03"
+      },
+      "missingFields": [
+        "time",
+        "eventType"
+      ]
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "name": "attendance_explicit_create",
+  "message": "ثبت تردد برای فردا",
+  "normalized": "ثبت تردد برای فردا",
+  "inputState": null,
+  "expectedDomain": "ATTENDANCE",
+  "expectedIntent": "CREATE_TIME_EVENT",
+  "domainOk": true,
+  "intentOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "ساعت تردد را بفرمایید؛ مثلاً ساعت ۸ صبح یا ۱۰ و ۵۰ دقیقه شب.",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03"
+      },
+      "missingFields": [
+        "time",
+        "eventType"
+      ]
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "name": "attendance_switch_from_leave",
+  "message": "ثبت تردد برای فردا ساعت 8 صبح",
+  "normalized": "ثبت تردد برای فردا ساعت 8 صبح",
+  "inputState": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "leaveType": "استحقاقی"
+    },
+    "missingFields": [
+      "startDate"
+    ]
+  },
+  "expectedDomain": "ATTENDANCE",
+  "expectedIntent": "CREATE_TIME_EVENT",
+  "domainOk": true,
+  "intentOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "08:00"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "08:00"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "name": "leave_switch_from_attendance",
+  "message": "ثبت مرخصی استحقاقی برای 4 مرداد",
+  "normalized": "ثبت مرخصی استحقاقی برای 4 مرداد",
+  "inputState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time"
+    ]
+  },
+  "expectedDomain": "LEAVE",
+  "expectedIntent": "CREATE_LEAVE",
+  "domainOk": true,
+  "intentOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/04",
+      "startDate": "1405/05/04",
+      "endDate": "1405/05/04"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/04",
+        "startDate": "1405/05/04",
+        "endDate": "1405/05/04"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+
+SEQUENTIAL NLU CASES
+------------------------------------------------------------------------
+{
+  "group": "attendance_time",
+  "message": "8",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": null,
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "ambiguousHour": 8,
+      "ambiguousMinute": 0
+    },
+    "missingFields": [
+      "meridiem",
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "منظورتان ساعت 8 صبح است یا ساعت 8 شب؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "ambiguousHour": 8,
+        "ambiguousMinute": 0
+      },
+      "missingFields": [
+        "meridiem",
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "۸",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": null,
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "ambiguousHour": 8,
+      "ambiguousMinute": 0
+    },
+    "missingFields": [
+      "meridiem",
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "منظورتان ساعت 8 صبح است یا ساعت 8 شب؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "ambiguousHour": 8,
+        "ambiguousMinute": 0
+      },
+      "missingFields": [
+        "meridiem",
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "8 صبح",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "08:00",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "08:00"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "08:00"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "۸ صبح",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "08:00",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "08:00"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "08:00"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "8 شب",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "20:00",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "20:00"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "20:00"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "8 و نیم صبح",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "08:30",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "08:30"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "08:30"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "8 و نیم شب",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "20:30",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "20:30"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "20:30"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "8 و چهل و پنج دقیقه صبح",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "08:45",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "08:45"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "08:45"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "8 و چهل و پنج دقیقه شب",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "20:45",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "20:45"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "20:45"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "10 و پنجاه دقیقه شب",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "22:50",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "22:50"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "22:50"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 1.0
+  }
+}
+{
+  "group": "attendance_time",
+  "message": "20:15",
+  "baseState": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03"
+    },
+    "missingFields": [
+      "time",
+      "eventType"
+    ]
+  },
+  "expectedTime": "20:15",
+  "domainOk": true,
+  "timeOk": true,
+  "periodClarificationOk": true,
+  "passed": true,
+  "result": {
+    "domain": "ATTENDANCE",
+    "intent": "CREATE_TIME_EVENT",
+    "entities": {
+      "date": "1405/05/03",
+      "time": "20:15"
+    },
+    "missingFields": [
+      "eventType"
+    ],
+    "needsClarification": true,
+    "clarification": "این تردد مربوط به ورود است یا خروج؟",
+    "errors": [],
+    "state": {
+      "domain": "ATTENDANCE",
+      "intent": "CREATE_TIME_EVENT",
+      "entities": {
+        "date": "1405/05/03",
+        "time": "20:15"
+      },
+      "missingFields": [
+        "eventType"
+      ]
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "group": "leave_date",
+  "message": "4 مرداد",
+  "baseState": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {},
+    "missingFields": [
+      "date"
+    ]
+  },
+  "expectedDate": "1405/05/04",
+  "domainOk": true,
+  "dateOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/04",
+      "startDate": "1405/05/04",
+      "endDate": "1405/05/04"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/04",
+        "startDate": "1405/05/04",
+        "endDate": "1405/05/04"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "group": "leave_date",
+  "message": "۴ مرداد",
+  "baseState": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {},
+    "missingFields": [
+      "date"
+    ]
+  },
+  "expectedDate": "1405/05/04",
+  "domainOk": true,
+  "dateOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/04",
+      "startDate": "1405/05/04",
+      "endDate": "1405/05/04"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/04",
+        "startDate": "1405/05/04",
+        "endDate": "1405/05/04"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "group": "leave_date",
+  "message": "چهارم مرداد",
+  "baseState": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {},
+    "missingFields": [
+      "date"
+    ]
+  },
+  "expectedDate": "1405/05/04",
+  "domainOk": true,
+  "dateOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/04",
+      "startDate": "1405/05/04",
+      "endDate": "1405/05/04"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/04",
+        "startDate": "1405/05/04",
+        "endDate": "1405/05/04"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "group": "leave_date",
+  "message": "فردا",
+  "baseState": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {},
+    "missingFields": [
+      "date"
+    ]
+  },
+  "expectedDate": "1405/05/03",
+  "domainOk": true,
+  "dateOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/03",
+      "startDate": "1405/05/03",
+      "endDate": "1405/05/03"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/03",
+        "startDate": "1405/05/03",
+        "endDate": "1405/05/03"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+{
+  "group": "leave_date",
+  "message": "پس فردا",
+  "baseState": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {},
+    "missingFields": [
+      "date"
+    ]
+  },
+  "expectedDate": "1405/05/04",
+  "domainOk": true,
+  "dateOk": true,
+  "passed": true,
+  "result": {
+    "domain": "LEAVE",
+    "intent": "CREATE_LEAVE",
+    "entities": {
+      "date": "1405/05/04",
+      "startDate": "1405/05/04",
+      "endDate": "1405/05/04"
+    },
+    "missingFields": [],
+    "needsClarification": false,
+    "clarification": null,
+    "errors": [],
+    "state": {
+      "domain": "LEAVE",
+      "intent": "CREATE_LEAVE",
+      "entities": {
+        "date": "1405/05/04",
+        "startDate": "1405/05/04",
+        "endDate": "1405/05/04"
+      },
+      "missingFields": []
+    },
+    "confidence": 0.95
+  }
+}
+
+INTENT GUARD CASES
+------------------------------------------------------------------------
+{
+  "importOk": true,
+  "cases": [
+    {
+      "message": "8",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "۸",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "8 صبح",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "8 شب",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "8 و نیم",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "8 و چهل و پنج دقیقه",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "4 مرداد",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "۴ مرداد",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "فردا",
+      "decision": {
+        "allowed": false,
+        "status": "OUT_OF_SCOPE",
+        "domain": "OUT_OF_SCOPE",
+        "intent": "UNKNOWN_OR_UNRELATED",
+        "confidence": 0.75,
+        "reply": "متأسفم، این پرسش در محدوده خدمات فعلی من نیست یا منظور آن را با اطمینان کافی تشخیص ندادم. من در زمینه غذا، مرخصی، مأموریت و تردد پاسخ‌گو هستم.",
+        "suggestions": [
+          "چه قابلیت‌هایی داری؟",
+          "منوی غذای این هفته را نشان بده",
+          "مانده مرخصی من چقدر است؟"
+        ]
+      }
+    },
+    {
+      "message": "ثبت ترد برای فردا",
+      "decision": {
+        "allowed": true,
+        "status": "DEFERRED",
+        "domain": "UNKNOWN",
+        "intent": "DEFER_TO_NLU",
+        "confidence": 0.7,
+        "reply": null,
+        "suggestions": []
+      }
+    },
+    {
+      "message": "ثبت تردد برای فردا",
+      "decision": {
+        "allowed": true,
+        "status": "ALLOWED",
+        "domain": "ATTENDANCE",
+        "intent": "CREATE_OR_RESERVE",
+        "confidence": 0.8999999999999999,
+        "reply": null,
+        "suggestions": []
+      }
+    },
+    {
+      "message": "میخوام مرخصی استحقاقی ثبت کنم برای فردا",
+      "decision": {
+        "allowed": true,
+        "status": "ALLOWED",
+        "domain": "LEAVE",
+        "intent": "CREATE_OR_RESERVE",
+        "confidence": 0.99,
+        "reply": null,
+        "suggestions": []
+      }
+    },
+    {
+      "message": "مرخصی اسحقاقی برای فردا",
+      "decision": {
+        "allowed": false,
+        "status": "AMBIGUOUS",
+        "domain": "LEAVE",
+        "intent": "DOMAIN_ONLY",
+        "confidence": 0.82,
+        "reply": "موضوع «مرخصی یا مأموریت» را تشخیص دادم، اما مشخص نیست چه کاری باید انجام شود. لطفاً درخواست خود را دقیق‌تر بیان کنید.",
+        "suggestions": [
+          "مانده مرخصی من چقدر است؟",
+          "برای فردا مرخصی ثبت کن",
+          "درخواست‌های مرخصی من را نشان بده"
+        ]
+      }
+    },
+    {
+      "message": "برای یکشنبه قیمه سیب زمینی رو حذف کن",
+      "decision": {
+        "allowed": true,
+        "status": "DEFERRED",
+        "domain": "UNKNOWN",
+        "intent": "DEFER_TO_NLU",
+        "confidence": 0.7,
+        "reply": null,
+        "suggestions": []
+      }
+    }
+  ],
+  "error": null
+}
+
+LOW-LEVEL DATE/TIME PARSERS
+------------------------------------------------------------------------
+{
+  "importOk": true,
+  "times": [
+    {
+      "message": "8",
+      "normalized": "8",
+      "result": []
+    },
+    {
+      "message": "۸",
+      "normalized": "8",
+      "result": []
+    },
+    {
+      "message": "8 صبح",
+      "normalized": "8 صبح",
+      "result": []
+    },
+    {
+      "message": "۸ صبح",
+      "normalized": "8 صبح",
+      "result": []
+    },
+    {
+      "message": "8 شب",
+      "normalized": "8 شب",
+      "result": []
+    },
+    {
+      "message": "8 و نیم",
+      "normalized": "8 و نیم",
+      "result": []
+    },
+    {
+      "message": "8 و نیم صبح",
+      "normalized": "8 و نیم صبح",
+      "result": []
+    },
+    {
+      "message": "8 و نیم شب",
+      "normalized": "8 و نیم شب",
+      "result": []
+    },
+    {
+      "message": "8 و چهل و پنج دقیقه",
+      "normalized": "8 و چهل و پنج دقیقه",
+      "result": []
+    },
+    {
+      "message": "8 و چهل و پنج دقیقه صبح",
+      "normalized": "8 و چهل و پنج دقیقه صبح",
+      "result": []
+    },
+    {
+      "message": "8 و چهل و پنج دقیقه شب",
+      "normalized": "8 و چهل و پنج دقیقه شب",
+      "result": []
+    },
+    {
+      "message": "10 و پنجاه دقیقه شب",
+      "normalized": "10 و پنجاه دقیقه شب",
+      "result": []
+    },
+    {
+      "message": "ساعت 8",
+      "normalized": "ساعت 8",
+      "result": []
+    },
+    {
+      "message": "ساعت 08:30",
+      "normalized": "ساعت 08:30",
+      "result": [
+        "08:30:00"
+      ]
+    },
+    {
+      "message": "20:15",
+      "normalized": "20:15",
+      "result": [
+        "20:15:00"
+      ]
+    }
+  ],
+  "dates": [
+    {
+      "message": "4 مرداد",
+      "normalized": "4 مرداد",
+      "result": []
+    },
+    {
+      "message": "۴ مرداد",
+      "normalized": "4 مرداد",
+      "result": []
+    },
+    {
+      "message": "چهارم مرداد",
+      "normalized": "چهارم مرداد",
+      "result": []
+    },
+    {
+      "message": "1405/05/04",
+      "normalized": "1405/05/04",
+      "result": [
+        "1405/05/04"
+      ]
+    },
+    {
+      "message": "۱۴۰۵/۰۵/۰۴",
+      "normalized": "1405/05/04",
+      "result": [
+        "1405/05/04"
+      ]
+    },
+    {
+      "message": "فردا",
+      "normalized": "فردا",
+      "result": []
+    },
+    {
+      "message": "پس فردا",
+      "normalized": "پس فردا",
+      "result": []
+    },
+    {
+      "message": "یکشنبه",
+      "normalized": "یکشنبه",
+      "result": []
+    }
+  ],
+  "error": null
+}
+
+CONSTANTS AND PATCH MARKERS
+------------------------------------------------------------------------
+{
+  "app\\application\\services\\chat_service.py": {
+    "constants": {
+      "FOOD_RESTAURANT_CONFIRM_STATE": "\"food_restaurant_confirmation\"",
+      "FOOD_RESTAURANT_SELECT_STATE": "\"food_restaurant_selection\"",
+      "FOOD_CHAT_STATE_TTL_MINUTES": "3",
+      "CONVERSATION_STATE": "\"conversation\"",
+      "CONVERSATION_STATE_TTL_MINUTES": "3",
+      "CONFIRM_REPLAY_TTL_SECONDS": "20"
+    },
+    "markers": [
+      "# CONFIRM_REPLAY_CACHE_V1",
+      "# CHAT_CONTEXT_TIME_FINAL_V1",
+      "# FOOD_CANCEL_CHANGE_FINAL_V1",
+      "# ACTIVE_CONTEXT_ANALYSIS_V1",
+      "# FOOD_FINAL_PART1_ORDER_V1",
+      "# FOOD_ROUTER_V4",
+      "# LEAVE_CONTEXT_SICK_GUARD_V1",
+      "# FOOD_CONVERSATION_V1",
+      "# LEAVE_CONTEXT_SICK_GUARD_V1",
+      "# FOOD_ROUTER_V4",
+      "# FOOD_ROUTER_DOMAIN_GUARD_V1",
+      "# FOOD_WEEKLY_MENU_V2",
+      "# FOOD_FINAL_PART2_EXACT_RESERVATION_V1",
+      "# FOOD_RECOMMENDATION_V3",
+      "# FOOD_RECOMMENDATION_V3",
+      "# FOOD_FINAL_PART3_SAFE_MENU_LABEL_V1",
+      "# ATTENDANCE_FUTURE_CHAT_GUARD_V1"
+    ],
+    "functions": [
+      {
+        "name": "handle",
+        "startLine": 61,
+        "endLine": 790,
+        "async": true
+      },
+      {
+        "name": "_handle_pending_action_reply",
+        "startLine": 1033,
+        "endLine": 1350,
+        "async": true
+      },
+      {
+        "name": "_load_conversation_payload",
+        "startLine": 1352,
+        "endLine": 1383,
+        "async": true
+      },
+      {
+        "name": "_save_conversation_payload",
+        "startLine": 1385,
+        "endLine": 1404,
+        "async": true
+      },
+      {
+        "name": "_delete_conversation_state",
+        "startLine": 1406,
+        "endLine": 1421,
+        "async": true
+      },
+      {
+        "name": "_nlu_state_with_active_date",
+        "startLine": 1470,
+        "endLine": 1509,
+        "async": false
+      },
+      {
+        "name": "_enrich_food_nlu_result",
+        "startLine": 1511,
+        "endLine": 1713,
+        "async": false
+      },
+      {
+        "name": "_combined_conversation_text",
+        "startLine": 1715,
+        "endLine": 1864,
+        "async": false
+      },
+      {
+        "name": "_cancel_pending_on_domain_switch",
+        "startLine": 1866,
+        "endLine": 1913,
+        "async": true
+      },
+      {
+        "name": "_finalize_response_state",
+        "startLine": 1955,
+        "endLine": 2216,
+        "async": true
+      },
+      {
+        "name": "_prepare_create_leave",
+        "startLine": 6934,
+        "endLine": 7104,
+        "async": true
+      },
+      {
+        "name": "_handle_attendance",
+        "startLine": 7212,
+        "endLine": 7377,
+        "async": true
+      }
+    ],
+    "totalLines": 7494
+  },
+  "app\\application\\services\\nlu_core.py": {
+    "constants": {},
+    "markers": [
+      "# FOOD_RECOMMENDATION_V3",
+      "# NLU_CONTEXT_TIME_FINAL_V1"
+    ],
+    "functions": [
+      {
+        "name": "normalize_text",
+        "startLine": 97,
+        "endLine": 181,
+        "async": false
+      },
+      {
+        "name": "_parse_jalali_date",
+        "startLine": 381,
+        "endLine": 447,
+        "async": false
+      },
+      {
+        "name": "_format_jalali_date",
+        "startLine": 453,
+        "endLine": 463,
+        "async": false
+      },
+      {
+        "name": "_resolve_named_date_year",
+        "startLine": 825,
+        "endLine": 911,
+        "async": false
+      },
+      {
+        "name": "_extract_named_jalali_date",
+        "startLine": 917,
+        "endLine": 1049,
+        "async": false
+      },
+      {
+        "name": "_extract_explicit_jalali_date",
+        "startLine": 1055,
+        "endLine": 1115,
+        "async": false
+      },
+      {
+        "name": "_extract_relative_date",
+        "startLine": 1121,
+        "endLine": 1199,
+        "async": false
+      },
+      {
+        "name": "_extract_date",
+        "startLine": 1205,
+        "endLine": 1239,
+        "async": false
+      },
+      {
+        "name": "_format_time",
+        "startLine": 1639,
+        "endLine": 1647,
+        "async": false
+      },
+      {
+        "name": "_time_result",
+        "startLine": 1653,
+        "endLine": 1689,
+        "async": false
+      },
+      {
+        "name": "_parse_time_segment",
+        "startLine": 1695,
+        "endLine": 2303,
+        "async": false
+      },
+      {
+        "name": "_extract_time_entities",
+        "startLine": 2309,
+        "endLine": 2481,
+        "async": false
+      },
+      {
+        "name": "_detect_food_intent",
+        "startLine": 2681,
+        "endLine": 3023,
+        "async": false
+      },
+      {
+        "name": "_detect_leave_intent",
+        "startLine": 3029,
+        "endLine": 3171,
+        "async": false
+      },
+      {
+        "name": "_detect_mission_intent",
+        "startLine": 3177,
+        "endLine": 3249,
+        "async": false
+      },
+      {
+        "name": "_detect_attendance_intent",
+        "startLine": 3255,
+        "endLine": 3379,
+        "async": false
+      },
+      {
+        "name": "_detect_domain_intent",
+        "startLine": 3385,
+        "endLine": 3497,
+        "async": false
+      },
+      {
+        "name": "_required_fields",
+        "startLine": 4119,
+        "endLine": 4273,
+        "async": false
+      },
+      {
+        "name": "_clarification_message",
+        "startLine": 4279,
+        "endLine": 4453,
+        "async": false
+      },
+      {
+        "name": "_is_read_only_intent",
+        "startLine": 4587,
+        "endLine": 4609,
+        "async": false
+      },
+      {
+        "name": "_build_state",
+        "startLine": 4615,
+        "endLine": 4657,
+        "async": false
+      },
+      {
+        "name": "analyze_message",
+        "startLine": 4671,
+        "endLine": 5641,
+        "async": false
+      },
+      {
+        "name": "normalize_text",
+        "startLine": 5740,
+        "endLine": 5762,
+        "async": false
+      },
+      {
+        "name": "_context_explicit_domain_v1",
+        "startLine": 5780,
+        "endLine": 5814,
+        "async": false
+      },
+      {
+        "name": "_context_parse_short_time_v1",
+        "startLine": 5872,
+        "endLine": 5976,
+        "async": false
+      },
+      {
+        "name": "analyze_message",
+        "startLine": 6467,
+        "endLine": 6604,
+        "async": false
+      }
+    ],
+    "totalLines": 6605
+  },
+  "app\\application\\services\\intent_guard.py": {
+    "constants": {},
+    "markers": [
+      "# FOOD_FINAL_PART1_GUARD_V1"
+    ],
+    "functions": [
+      {
+        "name": "analyze",
+        "startLine": 346,
+        "endLine": 620,
+        "async": false
+      }
+    ],
+    "totalLines": 704
+  },
+  "app\\application\\services\\action_service.py": {
+    "constants": {},
+    "markers": [
+      "# ATTENDANCE_FUTURE_ACTION_GUARD_V1",
+      "# FOOD_CHANGE_ACTION_FINAL_V1"
+    ],
+    "functions": [],
+    "totalLines": 1288
+  },
+  "app\\domain\\text.py": {
+    "constants": {
+      "TIME_RE": "re.compile(r\"\\b([01]?\\d|2[0-3])(?::| و |\\s)([0-5]\\d)(?::([0-5]\\d))?\\b\")"
+    },
+    "markers": [],
+    "functions": [
+      {
+        "name": "normalize_persian_text",
+        "startLine": 11,
+        "endLine": 14,
+        "async": false
+      },
+      {
+        "name": "extract_jalali_dates",
+        "startLine": 104,
+        "endLine": 106,
+        "async": false
+      },
+      {
+        "name": "extract_times",
+        "startLine": 164,
+        "endLine": 166,
+        "async": false
+      }
+    ],
+    "totalLines": 207
+  },
+  "app\\domain\\models.py": {
+    "constants": {},
+    "markers": [],
+    "functions": [],
+    "totalLines": 634
+  },
+  "app\\infrastructure\\repositories\\state_repository.py": {
+    "constants": {},
+    "markers": [],
+    "functions": [
+      {
+        "name": "save_chat_state",
+        "startLine": 569,
+        "endLine": 658,
+        "async": false
+      },
+      {
+        "name": "get_chat_state",
+        "startLine": 660,
+        "endLine": 755,
+        "async": false
+      },
+      {
+        "name": "delete_chat_state",
+        "startLine": 757,
+        "endLine": 791,
+        "async": false
+      }
+    ],
+    "totalLines": 1076
+  },
+  "app\\core\\config.py": {
+    "constants": {},
+    "markers": [],
+    "functions": [],
+    "totalLines": 162
+  }
+}
+
+SEARCH SNIPPETS
+------------------------------------------------------------------------
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: CONVERSATION_STATE_TTL_MINUTES
+00033: FOOD_RESTAURANT_SELECT_STATE = "food_restaurant_selection"
+00034: FOOD_CHAT_STATE_TTL_MINUTES = 3
+00035: CONVERSATION_STATE = "conversation"
+00036: CONVERSATION_STATE_TTL_MINUTES = 3
+00037: 
+00038: # CONFIRM_REPLAY_CACHE_V1
+00039: CONFIRM_REPLAY_TTL_SECONDS = 20
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: CONVERSATION_STATE_TTL_MINUTES
+01399:             employee_id,
+01400:             CONVERSATION_STATE,
+01401:             payload,
+01402:             CONVERSATION_STATE_TTL_MINUTES,
+01403:             context.conversation_id,
+01404:         )
+01405: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD_CHAT_STATE_TTL_MINUTES
+00031: 
+00032: FOOD_RESTAURANT_CONFIRM_STATE = "food_restaurant_confirmation"
+00033: FOOD_RESTAURANT_SELECT_STATE = "food_restaurant_selection"
+00034: FOOD_CHAT_STATE_TTL_MINUTES = 3
+00035: CONVERSATION_STATE = "conversation"
+00036: CONVERSATION_STATE_TTL_MINUTES = 3
+00037: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD_CHAT_STATE_TTL_MINUTES
+02861:                 employee_id,
+02862:                 FOOD_RESTAURANT_CONFIRM_STATE,
+02863:                 state_payload,
+02864:                 FOOD_CHAT_STATE_TTL_MINUTES,
+02865:                 conversation_id,
+02866:             )
+02867: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD_CHAT_STATE_TTL_MINUTES
+02876:                     "awaitingRestaurantConfirmation": True,
+02877:                     "restaurant": restaurant,
+02878:                     "expiresInMinutes": (
+02879:                         FOOD_CHAT_STATE_TTL_MINUTES
+02880:                     ),
+02881:                 },
+02882:             }
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD_CHAT_STATE_TTL_MINUTES
+02886:             employee_id,
+02887:             FOOD_RESTAURANT_SELECT_STATE,
+02888:             state_payload,
+02889:             FOOD_CHAT_STATE_TTL_MINUTES,
+02890:             conversation_id,
+02891:         )
+02892: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD_CHAT_STATE_TTL_MINUTES
+02901:                 "awaitingRestaurantSelection": True,
+02902:                 "restaurants": restaurants,
+02903:                 "expiresInMinutes": (
+02904:                     FOOD_CHAT_STATE_TTL_MINUTES
+02905:                 ),
+02906:             },
+02907:         }
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: intent_guard.analyze
+00210:             )
+00211: 
+00212:         # FOOD_FINAL_PART1_ORDER_V1
+00213:         intent_decision = self.intent_guard.analyze(
+00214:             contextual_analysis_text
+00215:         )
+00216: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _load_conversation_payload
+00081:             return pending_state_response
+00082: 
+00083:         conversation_payload = (
+00084:             await self._load_conversation_payload(
+00085:                 context
+00086:             )
+00087:         )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _load_conversation_payload
+00216: 
+00217:         if not intent_decision.allowed:
+00218:             guard_payload = (
+00219:                 await self._load_conversation_payload(
+00220:                     context
+00221:                 )
+00222:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _load_conversation_payload
+01009: 
+01010:         for attempt in range(attempts):
+01011:             current_payload = (
+01012:                 await self._load_conversation_payload(
+01013:                     context
+01014:                 )
+01015:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _load_conversation_payload
+01349:             },
+01350:         }
+01351: 
+01352:     async def _load_conversation_payload(
+01353:         self,
+01354:         context: AgentContext,
+01355:     ) -> dict[str, Any]:
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _save_conversation_payload
+00362:                 None,
+00363:             )
+00364: 
+00365:             await self._save_conversation_payload(
+00366:                 context,
+00367:                 updated_payload,
+00368:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _save_conversation_payload
+01234:                 ),
+01235:             }
+01236: 
+01237:             await self._save_conversation_payload(
+01238:                 context,
+01239:                 success_payload,
+01240:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _save_conversation_payload
+01307:                 "nluState"
+01308:             ] = nlu_state
+01309: 
+01310:             await self._save_conversation_payload(
+01311:                 context,
+01312:                 updated_payload,
+01313:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _save_conversation_payload
+01382:             else {}
+01383:         )
+01384: 
+01385:     async def _save_conversation_payload(
+01386:         self,
+01387:         context: AgentContext,
+01388:         payload: dict[str, Any],
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _save_conversation_payload
+02204:         )
+02205: 
+02206:         if should_preserve:
+02207:             await self._save_conversation_payload(
+02208:                 context,
+02209:                 updated_payload,
+02210:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: _save_conversation_payload
+02603:                 previous_payload,
+02604:                 dict,
+02605:             ) and previous_payload:
+02606:                 await self._save_conversation_payload(
+02607:                     context,
+02608:                     previous_payload,
+02609:                 )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: nluState
+00127: 
+00128:         active_nlu_state = (
+00129:             conversation_payload.get(
+00130:                 "nluState"
+00131:             )
+00132:             if isinstance(
+00133:                 conversation_payload.get(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: nluState
+00131:             )
+00132:             if isinstance(
+00133:                 conversation_payload.get(
+00134:                     "nluState"
+00135:                 ),
+00136:                 dict,
+00137:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: nluState
+00266: 
+00267:         previous_nlu_state = (
+00268:             conversation_payload.get(
+00269:                 "nluState"
+00270:             )
+00271:             if isinstance(
+00272:                 conversation_payload.get(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: nluState
+00270:             )
+00271:             if isinstance(
+00272:                 conversation_payload.get(
+00273:                     "nluState"
+00274:                 ),
+00275:                 dict,
+00276:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: nluState
+00341:             )
+00342:             updated_payload.update(
+00343:                 {
+00344:                     "nluState": (
+00345:                         nlu_result.get("state")
+00346:                         or {}
+00347:                     ),
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: nluState
+00810: 
+00811:         state = (
+00812:             conversation_payload.get(
+00813:                 "nluState"
+00814:             )
+00815:             if isinstance(
+00816:                 conversation_payload.get(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: nluState
+00814:             )
+00815:             if isinstance(
+00816:                 conversation_payload.get(
+00817:                     "nluState"
+00818:                 ),
+00819:                 dict,
+00820:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: nluState
+01292:             nlu_state = (
+01293:                 dict(
+01294:                     updated_payload.get(
+01295:                         "nluState"
+01296:                     )
+01297:                     or {}
+01298:                 )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: lastDomain
+00348:                     "originalMessage": (
+00349:                         combined_text
+00350:                     ),
+00351:                     "lastDomain": (
+00352:                         nlu_result.get("domain")
+00353:                     ),
+00354:                 }
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: lastDomain
+00824:         domain = str(
+00825:             state.get("domain")
+00826:             or conversation_payload.get(
+00827:                 "lastDomain"
+00828:             )
+00829:             or ""
+00830:         ).strip()
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: lastDomain
+01207:                 "CHANGE_FOOD",
+01208:             }:
+01209:                 success_payload[
+01210:                     "lastDomain"
+01211:                 ] = "FOOD"
+01212: 
+01213:                 # Menu selection data is now stale.
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: lastDomain
+01557:         is_food_follow_up = (
+01558:             str(
+01559:                 conversation_payload.get(
+01560:                     "lastDomain"
+01561:                 )
+01562:                 or ""
+01563:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: lastDomain
+01720:     ) -> str:
+01721:         previous_domain = str(
+01722:             conversation_payload.get(
+01723:                 "lastDomain"
+01724:             )
+01725:             or ""
+01726:         )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: lastDomain
+02009:                 "originalMessage": (
+02010:                     combined_text
+02011:                 ),
+02012:                 "lastDomain": (
+02013:                     nlu_result.get("domain")
+02014:                 ),
+02015:             }
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: lastDomain
+04368:         last_domain_is_food = (
+04369:             str(
+04370:                 conversation_payload.get(
+04371:                     "lastDomain"
+04372:                 )
+04373:                 or ""
+04374:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: originalMessage
+00153: 
+00154:         active_original_message = str(
+00155:             conversation_payload.get(
+00156:                 "originalMessage"
+00157:             )
+00158:             or ""
+00159:         ).strip()
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: originalMessage
+00345:                         nlu_result.get("state")
+00346:                         or {}
+00347:                     ),
+00348:                     "originalMessage": (
+00349:                         combined_text
+00350:                     ),
+00351:                     "lastDomain": (
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: originalMessage
+01731: 
+01732:         previous_text = str(
+01733:             conversation_payload.get(
+01734:                 "originalMessage"
+01735:             )
+01736:             or ""
+01737:         ).strip()
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: originalMessage
+02006:                         "missingFields": [],
+02007:                     }
+02008:                 ),
+02009:                 "originalMessage": (
+02010:                     combined_text
+02011:                 ),
+02012:                 "lastDomain": (
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: originalMessage
+02708:             )
+02709: 
+02710:         original_message = str(
+02711:             payload.get("originalMessage")
+02712:             or "منوی غذا را نشان بده"
+02713:         )
+02714:         original_text = normalize_persian_text(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: originalMessage
+02841:             }
+02842: 
+02843:         state_payload = {
+02844:             "originalMessage": text,
+02845:             "targetDate": target_date,
+02846:             "contextDate": context.date,
+02847:             "restaurants": restaurants,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: missingFields
+00140: 
+00141:         active_missing_fields = (
+00142:             active_nlu_state.get(
+00143:                 "missingFields"
+00144:             )
+00145:             if isinstance(
+00146:                 active_nlu_state.get(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: missingFields
+00144:             )
+00145:             if isinstance(
+00146:                 active_nlu_state.get(
+00147:                     "missingFields"
+00148:                 ),
+00149:                 list,
+00150:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: missingFields
+00385:                     "intent": (
+00386:                         nlu_result.get("intent")
+00387:                     ),
+00388:                     "missingFields": (
+00389:                         nlu_result.get(
+00390:                             "missingFields"
+00391:                         )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: missingFields
+00387:                     ),
+00388:                     "missingFields": (
+00389:                         nlu_result.get(
+00390:                             "missingFields"
+00391:                         )
+00392:                         or []
+00393:                     ),
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: missingFields
+00838: 
+00839:         missing_fields = (
+00840:             state.get(
+00841:                 "missingFields"
+00842:             )
+00843:             if isinstance(
+00844:                 state.get(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: missingFields
+00842:             )
+00843:             if isinstance(
+00844:                 state.get(
+00845:                     "missingFields"
+00846:                 ),
+00847:                 list,
+00848:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: missingFields
+01301:                 "proposalRejected"
+01302:             ] = True
+01303:             nlu_state[
+01304:                 "missingFields"
+01305:             ] = ["alternative"]
+01306:             updated_payload[
+01307:                 "nluState"
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: missingFields
+01613:                 "intent": "RESERVE_FOOD",
+01614:                 "entities": entities,
+01615:                 "confidence": 0.95,
+01616:                 "missingFields": missing_fields,
+01617:                 "needsClarification": bool(
+01618:                     missing_fields
+01619:                 ),
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: needsClarification
+00334:         )
+00335: 
+00336:         if nlu_result.get(
+00337:             "needsClarification"
+00338:         ):
+00339:             updated_payload = dict(
+00340:                 conversation_payload
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: needsClarification
+01614:                 "entities": entities,
+01615:                 "confidence": 0.95,
+01616:                 "missingFields": missing_fields,
+01617:                 "needsClarification": bool(
+01618:                     missing_fields
+01619:                 ),
+01620:                 "conversationComplete": False,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: needsClarification
+01678:             result["missingFields"] = (
+01679:                 missing_fields
+01680:             )
+01681:             result["needsClarification"] = (
+01682:                 bool(
+01683:                     missing_fields
+01684:                     or result.get("errors")
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: needsClarification
+01704:             result["state"] = state
+01705: 
+01706:             if not result[
+01707:                 "needsClarification"
+01708:             ]:
+01709:                 result["clarification"] = (
+01710:                     None
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: needsClarification
+02195:                 "recentMenus"
+02196:             )
+02197:             or nlu_result.get(
+02198:                 "needsClarification"
+02199:             )
+02200:             or not nlu_result.get(
+02201:                 "conversationComplete",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: needsClarification
+04207:             },
+04208:             "confidence": 1.0,
+04209:             "missingFields": [],
+04210:             "needsClarification": False,
+04211:             "conversationComplete": False,
+04212:             "clarification": None,
+04213:             "errors": [],
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: needsClarification
+04484:             "entities": entities,
+04485:             "confidence": 0.99,
+04486:             "missingFields": [],
+04487:             "needsClarification": False,
+04488:             "conversationComplete": False,
+04489:             "clarification": None,
+04490:             "errors": [],
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversationComplete
+01617:                 "needsClarification": bool(
+01618:                     missing_fields
+01619:                 ),
+01620:                 "conversationComplete": False,
+01621:                 "clarification": (
+01622:                     "برای چه روزی غذا رزرو شود؟"
+01623:                     if missing_fields
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversationComplete
+02198:                 "needsClarification"
+02199:             )
+02200:             or not nlu_result.get(
+02201:                 "conversationComplete",
+02202:                 False,
+02203:             )
+02204:         )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversationComplete
+04208:             "confidence": 1.0,
+04209:             "missingFields": [],
+04210:             "needsClarification": False,
+04211:             "conversationComplete": False,
+04212:             "clarification": None,
+04213:             "errors": [],
+04214:             "state": {
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversationComplete
+04485:             "confidence": 0.99,
+04486:             "missingFields": [],
+04487:             "needsClarification": False,
+04488:             "conversationComplete": False,
+04489:             "clarification": None,
+04490:             "errors": [],
+04491:             "state": state,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: previous_state
+01468: 
+01469:     @staticmethod
+01470:     def _nlu_state_with_active_date(
+01471:         previous_state: dict[str, Any] | None,
+01472:         conversation_payload: dict[str, Any],
+01473:     ) -> dict[str, Any] | None:
+01474:         if not previous_state:
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: previous_state
+01471:         previous_state: dict[str, Any] | None,
+01472:         conversation_payload: dict[str, Any],
+01473:     ) -> dict[str, Any] | None:
+01474:         if not previous_state:
+01475:             return previous_state
+01476: 
+01477:         active_date = str(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: previous_state
+01472:         conversation_payload: dict[str, Any],
+01473:     ) -> dict[str, Any] | None:
+01474:         if not previous_state:
+01475:             return previous_state
+01476: 
+01477:         active_date = str(
+01478:             conversation_payload.get(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: previous_state
+01482:         ).strip()
+01483: 
+01484:         if not active_date:
+01485:             return previous_state
+01486: 
+01487:         updated_state = dict(
+01488:             previous_state
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: previous_state
+01485:             return previous_state
+01486: 
+01487:         updated_state = dict(
+01488:             previous_state
+01489:         )
+01490:         entities = (
+01491:             dict(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversation_state
+00172:             active_missing_fields
+00173:             and text in conversation_cancel_terms
+00174:         ):
+00175:             await self._delete_conversation_state(
+00176:                 context
+00177:             )
+00178: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversation_state
+00287:         nlu_result = analyze_message(
+00288:             contextual_analysis_message,
+00289:             reference_date=reference_date,
+00290:             conversation_state=(
+00291:                 previous_nlu_state
+00292:             ),
+00293:         )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversation_state
+00559:                         combined_text
+00560:                     )
+00561:                 ):
+00562:                     await self._delete_conversation_state(
+00563:                         context
+00564:                     )
+00565: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversation_state
+01337:                 "فرایند فعال این مکالمه لغو شد."
+01338:             )
+01339: 
+01340:         await self._delete_conversation_state(
+01341:             context
+01342:         )
+01343: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversation_state
+01403:             context.conversation_id,
+01404:         )
+01405: 
+01406:     async def _delete_conversation_state(
+01407:         self,
+01408:         context: AgentContext,
+01409:     ) -> None:
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversation_state
+02209:                 updated_payload,
+02210:             )
+02211:         else:
+02212:             await self._delete_conversation_state(
+02213:                 context
+02214:             )
+02215: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversation_state
+02760:             reference_date=str(
+02761:                 food_context.date or ""
+02762:             ),
+02763:             conversation_state=(
+02764:                 conversation_payload.get(
+02765:                     "nluState"
+02766:                 )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: conversation_state
+03403:                 reference_date=(
+03404:                     reference_date
+03405:                 ),
+03406:                 conversation_state=None,
+03407:             )
+03408: 
+03409:             entities = (
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: extract_times
+00019: from app.domain.models import AgentContext
+00020: from app.domain.text import (
+00021:     extract_jalali_dates,
+00022:     extract_times,
+00023:     hours_between,
+00024:     normalize_persian_text,
+00025:     parse_bool,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: extract_times
+00627:                 legacy_dates = (
+00628:                     extract_jalali_dates(text)
+00629:                 )
+00630:                 legacy_times = extract_times(
+00631:                     text
+00632:                 )
+00633:             except ValueError as exc:
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: extract_jalali_dates
+00018: from app.core.exceptions import AppError
+00019: from app.domain.models import AgentContext
+00020: from app.domain.text import (
+00021:     extract_jalali_dates,
+00022:     extract_times,
+00023:     hours_between,
+00024:     normalize_persian_text,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: extract_jalali_dates
+00625: 
+00626:             try:
+00627:                 legacy_dates = (
+00628:                     extract_jalali_dates(text)
+00629:                 )
+00630:                 legacy_times = extract_times(
+00631:                     text
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: صبح
+00879:             return False
+00880: 
+00881:         continuation_terms = {
+00882:             "صبح",
+00883:             "بامداد",
+00884:             "ظهر",
+00885:             "بعدازظهر",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: صبح
+03093:             "سلام",
+03094:             "درود",
+03095:             "سلام خوبی",
+03096:             "صبح بخیر",
+03097:             "عصر بخیر",
+03098:             "شب بخیر",
+03099:         }
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: صبح
+07396:             period = "بامداد"
+07397:         elif hour < 12:
+07398:             display_hour = hour
+07399:             period = "صبح"
+07400:         elif hour == 12:
+07401:             display_hour = 12
+07402:             period = "ظهر"
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: شب
+00884:             "ظهر",
+00885:             "بعدازظهر",
+00886:             "عصر",
+00887:             "شب",
+00888:             "نیم",
+00889:             "ربع",
+00890:             "دقیقه",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: شب
+03095:             "سلام خوبی",
+03096:             "صبح بخیر",
+03097:             "عصر بخیر",
+03098:             "شب بخیر",
+03099:         }
+03100: 
+03101:     @staticmethod
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: شب
+03178:         typo_replacements = {
+03179:             "یکشنیه": "یکشنبه",
+03180:             "یکشنیه": "یکشنبه",
+03181:             "یکشبه": "یکشنبه",
+03182:             "دوشنبه": "دوشنبه",
+03183:             "سهشنه": "سه شنبه",
+03184:             "سهشنیه": "سه شنبه",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: شب
+07402:             period = "ظهر"
+07403:         else:
+07404:             display_hour = hour - 12
+07405:             period = "شب"
+07406: 
+07407:         if minute:
+07408:             return (
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: نیم
+00178: 
+00179:             return {
+00180:                 "reply": (
+00181:                     "باشه، درخواست نیمه‌کاره لغو شد."
+00182:                 ),
+00183:                 "requiresConfirmation": False,
+00184:                 "data": {
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: نیم
+00885:             "بعدازظهر",
+00886:             "عصر",
+00887:             "شب",
+00888:             "نیم",
+00889:             "ربع",
+00890:             "دقیقه",
+00891:             "ساعت",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: مرداد
+00898:             "اردیبهشت",
+00899:             "خرداد",
+00900:             "تیر",
+00901:             "مرداد",
+00902:             "شهریور",
+00903:             "مهر",
+00904:             "آبان",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: مرداد
+03686:                 "اردیبهشت",
+03687:                 "خرداد",
+03688:                 "تیر",
+03689:                 "مرداد",
+03690:                 "شهریور",
+03691:                 "مهر",
+03692:                 "آبان",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: مرداد
+04354:                 "اردیبهشت",
+04355:                 "خرداد",
+04356:                 "تیر",
+04357:                 "مرداد",
+04358:                 "شهریور",
+04359:                 "مهر",
+04360:                 "آبان",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: مرداد
+04677:             re.search(
+04678:                 r"[0-9۰-۹]{1,2}\s*"
+04679:                 r"(?:فروردین|اردیبهشت|خرداد|"
+04680:                 r"تیر|مرداد|شهریور|مهر|آبان|"
+04681:                 r"آذر|دی|بهمن|اسفند)",
+04682:                 normalized_food_text,
+04683:             )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: مرداد
+06031:             "اردیبهشت",
+06032:             "خرداد",
+06033:             "تیر",
+06034:             "مرداد",
+06035:             "شهریور",
+06036:             "مهر",
+06037:             "آبان",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: استحقاقی
+00908:             "اسفند",
+00909:             "ورود",
+00910:             "خروج",
+00911:             "استحقاقی",
+00912:             "استعلاجی",
+00913:             "ساعتی",
+00914:             "بله",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: استحقاقی
+06974:             return {
+06975:                 "reply": (
+06976:                     "نوع درخواست را دقیق‌تر بگویید؛ "
+06977:                     "مانند مرخصی ساعتی، استحقاقی "
+06978:                     "یا مأموریت ساعتی."
+06979:                 ),
+06980:                 "requiresConfirmation": False,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ترد
+00254:             return {
+00255:                 "reply": (
+00256:                     f"سلام{name}. آماده‌ام امور غذا، مرخصی، "
+00257:                     "مأموریت و تردد را برایت بررسی کنم."
+00258:                 ),
+00259:                 "requiresConfirmation": False,
+00260:                 "suggestions": self._suggestions(),
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ترد
+00782:                 or (
+00783:                     "درخواست را دقیق‌تر بگو. می‌توانم منوی غذا، "
+00784:                     "رزرو و لغو غذا، مانده و درخواست‌های مرخصی، "
+00785:                     "مأموریت، تردد و گزارش امروز را مدیریت کنم."
+00786:                 )
+00787:             ),
+00788:             "requiresConfirmation": False,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ترد
+02498:                 "درخواست با موفقیت حذف شد."
+02499:             ),
+02500:             "CREATE_TIME_EVENT": (
+02501:                 "تردد با موفقیت ثبت شد."
+02502:             ),
+02503:         }
+02504: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ترد
+03491:             "مرخصی",
+03492:             "ماموریت",
+03493:             "مأموریت",
+03494:             "تردد",
+03495:             "ورود",
+03496:             "خروج",
+03497:             "اضافه کاری",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ترد
+04597:         return any(
+04598:             keyword in text
+04599:             for keyword in [
+04600:                 "تردد",
+04601:                 "ورود",
+04602:                 "خروج",
+04603:                 "ساعت زنی",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ترد
+07191: 
+07192:         return {
+07193:             "reply": (
+07194:                 "ثبت تردد برای زمان آینده "
+07195:                 "امکان‌پذیر نیست. لطفاً تاریخ "
+07196:                 "و ساعت گذشته یا زمان فعلی "
+07197:                 "را اعلام کنید."
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ترد
+07264:             if not target_dates:
+07265:                 return {
+07266:                     "reply": (
+07267:                         "برای بررسی تردد، تاریخ "
+07268:                         "را وارد کنید."
+07269:                     ),
+07270:                     "requiresConfirmation": False,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ترد
+07286:             return {
+07287:                 "reply": (
+07288:                     f"{len(rows) if isinstance(rows, list) else 0} "
+07289:                     "تردد دریافت شد."
+07290:                 ),
+07291:                 "requiresConfirmation": False,
+07292:                 "data": {
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: تردد
+00254:             return {
+00255:                 "reply": (
+00256:                     f"سلام{name}. آماده‌ام امور غذا، مرخصی، "
+00257:                     "مأموریت و تردد را برایت بررسی کنم."
+00258:                 ),
+00259:                 "requiresConfirmation": False,
+00260:                 "suggestions": self._suggestions(),
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: تردد
+00782:                 or (
+00783:                     "درخواست را دقیق‌تر بگو. می‌توانم منوی غذا، "
+00784:                     "رزرو و لغو غذا، مانده و درخواست‌های مرخصی، "
+00785:                     "مأموریت، تردد و گزارش امروز را مدیریت کنم."
+00786:                 )
+00787:             ),
+00788:             "requiresConfirmation": False,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: تردد
+02498:                 "درخواست با موفقیت حذف شد."
+02499:             ),
+02500:             "CREATE_TIME_EVENT": (
+02501:                 "تردد با موفقیت ثبت شد."
+02502:             ),
+02503:         }
+02504: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: تردد
+03491:             "مرخصی",
+03492:             "ماموریت",
+03493:             "مأموریت",
+03494:             "تردد",
+03495:             "ورود",
+03496:             "خروج",
+03497:             "اضافه کاری",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: تردد
+04597:         return any(
+04598:             keyword in text
+04599:             for keyword in [
+04600:                 "تردد",
+04601:                 "ورود",
+04602:                 "خروج",
+04603:                 "ساعت زنی",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: تردد
+07191: 
+07192:         return {
+07193:             "reply": (
+07194:                 "ثبت تردد برای زمان آینده "
+07195:                 "امکان‌پذیر نیست. لطفاً تاریخ "
+07196:                 "و ساعت گذشته یا زمان فعلی "
+07197:                 "را اعلام کنید."
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: تردد
+07264:             if not target_dates:
+07265:                 return {
+07266:                     "reply": (
+07267:                         "برای بررسی تردد، تاریخ "
+07268:                         "را وارد کنید."
+07269:                     ),
+07270:                     "requiresConfirmation": False,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: تردد
+07286:             return {
+07287:                 "reply": (
+07288:                     f"{len(rows) if isinstance(rows, list) else 0} "
+07289:                     "تردد دریافت شد."
+07290:                 ),
+07291:                 "requiresConfirmation": False,
+07292:                 "data": {
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD
+00029: from app.infrastructure.repositories.state_repository import StateRepository
+00030: 
+00031: 
+00032: FOOD_RESTAURANT_CONFIRM_STATE = "food_restaurant_confirmation"
+00033: FOOD_RESTAURANT_SELECT_STATE = "food_restaurant_selection"
+00034: FOOD_CHAT_STATE_TTL_MINUTES = 3
+00035: CONVERSATION_STATE = "conversation"
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD
+00030: 
+00031: 
+00032: FOOD_RESTAURANT_CONFIRM_STATE = "food_restaurant_confirmation"
+00033: FOOD_RESTAURANT_SELECT_STATE = "food_restaurant_selection"
+00034: FOOD_CHAT_STATE_TTL_MINUTES = 3
+00035: CONVERSATION_STATE = "conversation"
+00036: CONVERSATION_STATE_TTL_MINUTES = 3
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD
+00031: 
+00032: FOOD_RESTAURANT_CONFIRM_STATE = "food_restaurant_confirmation"
+00033: FOOD_RESTAURANT_SELECT_STATE = "food_restaurant_selection"
+00034: FOOD_CHAT_STATE_TTL_MINUTES = 3
+00035: CONVERSATION_STATE = "conversation"
+00036: CONVERSATION_STATE_TTL_MINUTES = 3
+00037: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD
+00039: CONFIRM_REPLAY_TTL_SECONDS = 20
+00040: CONFIRM_REPLAY_WAIT_SECONDS = 5
+00041: 
+00042: FOOD_MEAL_ID = 1
+00043: 
+00044: 
+00045: class ChatService:
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD
+00104:         if control_response is not None:
+00105:             return control_response
+00106: 
+00107:         # FOOD_CANCEL_CHANGE_FINAL_V1
+00108:         food_mutation_response = (
+00109:             await self._handle_explicit_food_mutation(
+00110:                 context,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD
+00209:                 )
+00210:             )
+00211: 
+00212:         # FOOD_FINAL_PART1_ORDER_V1
+00213:         intent_decision = self.intent_guard.analyze(
+00214:             contextual_analysis_text
+00215:         )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD
+00324:             )
+00325:         )
+00326: 
+00327:         # FOOD_ROUTER_V4
+00328:         nlu_result = (
+00329:             self._override_explicit_food_command(
+00330:                 nlu_result,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: FOOD
+00421: 
+00422:         try:
+00423:             if intent in {
+00424:                 "SHOW_FOOD_MENU",
+00425:                 "SHOW_FOOD_RESERVATION",
+00426:                 "RESERVE_FOOD",
+00427:                 "CANCEL_FOOD",
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: LEAVE
+00454:                     combined_text,
+00455:                 )
+00456: 
+00457:             if intent == "GET_LEAVE_BALANCE":
+00458:                 target_date = (
+00459:                     dates[0]
+00460:                     if dates
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: LEAVE
+00486:                     combined_text,
+00487:                 )
+00488: 
+00489:             if intent == "SHOW_LEAVE_REQUESTS":
+00490:                 target_date = (
+00491:                     dates[0]
+00492:                     if dates
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: LEAVE
+00529:                 )
+00530: 
+00531:             if intent in {
+00532:                 "CANCEL_LEAVE",
+00533:                 "CANCEL_MISSION",
+00534:             }:
+00535:                 response = (
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: LEAVE
+00549:                 )
+00550: 
+00551:             if intent in {
+00552:                 "CREATE_LEAVE",
+00553:                 "CREATE_MISSION",
+00554:             }:
+00555:                 # LEAVE_CONTEXT_SICK_GUARD_V1
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: LEAVE
+00552:                 "CREATE_LEAVE",
+00553:                 "CREATE_MISSION",
+00554:             }:
+00555:                 # LEAVE_CONTEXT_SICK_GUARD_V1
+00556:                 if (
+00557:                     intent == "CREATE_LEAVE"
+00558:                     and self._is_unsupported_sick_leave(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: LEAVE
+00554:             }:
+00555:                 # LEAVE_CONTEXT_SICK_GUARD_V1
+00556:                 if (
+00557:                     intent == "CREATE_LEAVE"
+00558:                     and self._is_unsupported_sick_leave(
+00559:                         combined_text
+00560:                     )
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: LEAVE
+02015:             }
+02016:         )
+02017: 
+02018:         # LEAVE_CONTEXT_SICK_GUARD_V1
+02019:         response_missing_field = str(
+02020:             response_data.get(
+02021:                 "missingField"
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: LEAVE
+02491:             "RATE_FOOD": (
+02492:                 "امتیاز غذا با موفقیت ثبت شد."
+02493:             ),
+02494:             "CREATE_LEAVE": (
+02495:                 "✅ درخواست مرخصی با موفقیت ثبت شد."
+02496:             ),
+02497:             "DELETE_LEAVE": (
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: MISSION
+00530: 
+00531:             if intent in {
+00532:                 "CANCEL_LEAVE",
+00533:                 "CANCEL_MISSION",
+00534:             }:
+00535:                 response = (
+00536:                     await self._prepare_delete_leave(
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: MISSION
+00550: 
+00551:             if intent in {
+00552:                 "CREATE_LEAVE",
+00553:                 "CREATE_MISSION",
+00554:             }:
+00555:                 # LEAVE_CONTEXT_SICK_GUARD_V1
+00556:                 if (
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: MISSION
+04251: 
+04252:         if detected_domain in {
+04253:             "LEAVE",
+04254:             "MISSION",
+04255:             "ATTENDANCE",
+04256:         }:
+04257:             return result
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ATTENDANCE
+00590:                 )
+00591: 
+00592:             if intent in {
+00593:                 "SHOW_ATTENDANCE",
+00594:                 "CREATE_TIME_EVENT",
+00595:                 "CREATE_TIME_EVENT_RANGE",
+00596:             }:
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ATTENDANCE
+04252:         if detected_domain in {
+04253:             "LEAVE",
+04254:             "MISSION",
+04255:             "ATTENDANCE",
+04256:         }:
+04257:             return result
+04258: 
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ATTENDANCE
+07103:             },
+07104:         }
+07105: 
+07106:     # ATTENDANCE_FUTURE_CHAT_GUARD_V1
+07107:     async def _handle_future_attendance_guard(
+07108:         self,
+07109:         context: AgentContext,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ATTENDANCE
+07129:             or ""
+07130:         )
+07131: 
+07132:         if domain != "ATTENDANCE":
+07133:             return None
+07134: 
+07135:         if intent not in {
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ATTENDANCE
+07198:             ),
+07199:             "requiresConfirmation": False,
+07200:             "data": {
+07201:                 "domain": "ATTENDANCE",
+07202:                 "intent": intent,
+07203:                 "blocked": True,
+07204:                 "reasonCode": (
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ATTENDANCE
+07202:                 "intent": intent,
+07203:                 "blocked": True,
+07204:                 "reasonCode": (
+07205:                     "FUTURE_ATTENDANCE_NOT_ALLOWED"
+07206:                 ),
+07207:                 "reason": reason,
+07208:                 "eventDate": event_date,
+
+
+FILE: D:\serviceAi\app\application\services\chat_service.py
+TERM: ATTENDANCE
+07239:                 await self._handle_future_attendance_guard(
+07240:                     context,
+07241:                     {
+07242:                         "domain": "ATTENDANCE",
+07243:                         "intent": "CREATE_TIME_EVENT",
+07244:                         "entities": {
+07245:                             "date": (
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: missingFields
+04648: 
+04649:         "entities": dict(entities),
+04650: 
+04651:         "missingFields": list(
+04652: 
+04653:             missing_fields
+04654: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: missingFields
+04712: 
+04713:             "confidence": 1.0,
+04714: 
+04715:             "missingFields": [
+04716: 
+04717:                 "message"
+04718: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: missingFields
+04852: 
+04853:                 "confidence": 1.0,
+04854: 
+04855:                 "missingFields": [],
+04856: 
+04857:                 "needsClarification": False,
+04858: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: missingFields
+04968: 
+04969:                 ),
+04970: 
+04971:                 "missingFields": [
+04972: 
+04973:                     "alternative"
+04974: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: missingFields
+05008: 
+05009:                 "confidence": 1.0,
+05010: 
+05011:                 "missingFields": [
+05012: 
+05013:                     "alternative"
+05014: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: missingFields
+05120: 
+05121:                 "confidence": 1.0,
+05122: 
+05123:                 "missingFields": [
+05124: 
+05125:                     "alternative"
+05126: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: missingFields
+05208: 
+05209:             "confidence": 1.0,
+05210: 
+05211:             "missingFields": [],
+05212: 
+05213:             "needsClarification": False,
+05214: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: missingFields
+05614: 
+05615:         ),
+05616: 
+05617:         "missingFields": (
+05618: 
+05619:             missing_fields
+05620: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: needsClarification
+04718: 
+04719:             ],
+04720: 
+04721:             "needsClarification": True,
+04722: 
+04723:             "conversationComplete": False,
+04724: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: needsClarification
+04854: 
+04855:                 "missingFields": [],
+04856: 
+04857:                 "needsClarification": False,
+04858: 
+04859:                 "conversationComplete": True,
+04860: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: needsClarification
+05014: 
+05015:                 ],
+05016: 
+05017:                 "needsClarification": True,
+05018: 
+05019:                 "conversationComplete": False,
+05020: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: needsClarification
+05126: 
+05127:                 ],
+05128: 
+05129:                 "needsClarification": True,
+05130: 
+05131:                 "conversationComplete": False,
+05132: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: needsClarification
+05210: 
+05211:             "missingFields": [],
+05212: 
+05213:             "needsClarification": False,
+05214: 
+05215:             "conversationComplete": True,
+05216: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: needsClarification
+05620: 
+05621:         ),
+05622: 
+05623:         "needsClarification": (
+05624: 
+05625:             needs_clarification
+05626: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: needsClarification
+06165:         "missingFields": (
+06166:             missing_fields
+06167:         ),
+06168:         "needsClarification": bool(
+06169:             missing_fields
+06170:         ),
+06171:         "conversationComplete": (
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: needsClarification
+06307:     ] = []
+06308: 
+06309:     updated[
+06310:         "needsClarification"
+06311:     ] = False
+06312: 
+06313:     updated[
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversationComplete
+04720: 
+04721:             "needsClarification": True,
+04722: 
+04723:             "conversationComplete": False,
+04724: 
+04725:             "clarification": (
+04726: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversationComplete
+04856: 
+04857:                 "needsClarification": False,
+04858: 
+04859:                 "conversationComplete": True,
+04860: 
+04861:                 "clarification": None,
+04862: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversationComplete
+05016: 
+05017:                 "needsClarification": True,
+05018: 
+05019:                 "conversationComplete": False,
+05020: 
+05021:                 "clarification": (
+05022: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversationComplete
+05128: 
+05129:                 "needsClarification": True,
+05130: 
+05131:                 "conversationComplete": False,
+05132: 
+05133:                 "clarification": (
+05134: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversationComplete
+05212: 
+05213:             "needsClarification": False,
+05214: 
+05215:             "conversationComplete": True,
+05216: 
+05217:             "clarification": None,
+05218: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversationComplete
+05626: 
+05627:         ),
+05628: 
+05629:         "conversationComplete": (
+05630: 
+05631:             conversation_complete
+05632: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversationComplete
+06168:         "needsClarification": bool(
+06169:             missing_fields
+06170:         ),
+06171:         "conversationComplete": (
+06172:             not missing_fields
+06173:         ),
+06174:         "clarification": (
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversationComplete
+06311:     ] = False
+06312: 
+06313:     updated[
+06314:         "conversationComplete"
+06315:     ] = False
+06316: 
+06317:     updated[
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: previous_state
+04682: 
+04683:     text = normalize_text(message)
+04684: 
+04685:     previous_state = (
+04686: 
+04687:         dict(conversation_state)
+04688: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: previous_state
+04746: 
+04747: 
+04748: 
+04749:     if previous_state:
+04750: 
+04751:         normalized_cancel_values = {
+04752: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: previous_state
+04832: 
+04833:                 "domain": (
+04834: 
+04835:                     previous_state.get(
+04836: 
+04837:                         "domain"
+04838: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: previous_state
+04876: 
+04877: 
+04878: 
+04879:     if previous_state:
+04880: 
+04881:         normalized_reject_values = {
+04882: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: previous_state
+04892: 
+04893:             previous_domain_value = str(
+04894: 
+04895:                 previous_state.get(
+04896: 
+04897:                     "domain"
+04898: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: previous_state
+04906: 
+04907:             previous_intent_value = (
+04908: 
+04909:                 previous_state.get(
+04910: 
+04911:                     "intent"
+04912: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: previous_state
+04918: 
+04919:             previous_entities_value = (
+04920: 
+04921:                 previous_state.get(
+04922: 
+04923:                     "entities"
+04924: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: previous_state
+04926: 
+04927:                 if isinstance(
+04928: 
+04929:                     previous_state.get(
+04930: 
+04931:                         "entities"
+04932: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversation_state
+04676: 
+04677:     reference_date: str,
+04678: 
+04679:     conversation_state: dict[str, Any] | None = None,
+04680: 
+04681: ) -> dict[str, Any]:
+04682: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversation_state
+04684: 
+04685:     previous_state = (
+04686: 
+04687:         dict(conversation_state)
+04688: 
+04689:         if isinstance(
+04690: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversation_state
+04688: 
+04689:         if isinstance(
+04690: 
+04691:             conversation_state,
+04692: 
+04693:             dict,
+04694: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversation_state
+06468:     message: str,
+06469:     *,
+06470:     reference_date: str,
+06471:     conversation_state: (
+06472:         dict[str, Any]
+06473:         | None
+06474:     ) = None,
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversation_state
+06478:     )
+06479: 
+06480:     previous_state = (
+06481:         dict(conversation_state)
+06482:         if isinstance(
+06483:             conversation_state,
+06484:             dict,
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversation_state
+06480:     previous_state = (
+06481:         dict(conversation_state)
+06482:         if isinstance(
+06483:             conversation_state,
+06484:             dict,
+06485:         )
+06486:         else {}
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversation_state
+06550:             reference_date=(
+06551:                 reference_date
+06552:             ),
+06553:             conversation_state=(
+06554:                 previous_state
+06555:                 if previous_state
+06556:                 else None
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: conversation_state
+06577:                 reference_date=(
+06578:                     reference_date
+06579:                 ),
+06580:                 conversation_state=None,
+06581:             )
+06582:         )
+06583: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: صبح
+01556: 
+01557: _MERIDIEM_WORDS = {
+01558: 
+01559:     "صبح": "AM",
+01560: 
+01561:     "بامداد": "AM",
+01562: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: صبح
+02196: 
+02197:         meridiem_pattern = (
+02198: 
+02199:             r"صبح|بامداد|ظهر|بعدازظهر|عصر|شب"
+02200: 
+02201:         )
+02202: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: صبح
+04308: 
+04309:         return (
+04310: 
+04311:             "منظورتان صبح است یا شب؟ "
+04312: 
+04313:             "برای نمونه: ساعت ۱۰ صبح "
+04314: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: صبح
+04310: 
+04311:             "منظورتان صبح است یا شب؟ "
+04312: 
+04313:             "برای نمونه: ساعت ۱۰ صبح "
+04314: 
+04315:             "یا ساعت ۱۰ شب."
+04316: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: صبح
+04350: 
+04351:             "ساعت تردد را بفرمایید؛ "
+04352: 
+04353:             "مثلاً ساعت ۸ صبح یا "
+04354: 
+04355:             "۱۰ و ۵۰ دقیقه شب."
+04356: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: صبح
+05679: 
+05680: 
+05681: _CONTEXT_MERIDIEM_V1 = {
+05682:     "صبح": "AM",
+05683:     "بامداد": "AM",
+05684:     "ظهر": "PM",
+05685:     "بعدازظهر": "PM",
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: صبح
+06105: 
+06106:         clarification = (
+06107:             f"منظورتان ساعت "
+06108:             f"{time_label} صبح است "
+06109:             f"یا ساعت {time_label} شب؟"
+06110:         )
+06111: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: شب
+01566: 
+01567:     "عصر": "PM",
+01568: 
+01569:     "شب": "PM",
+01570: 
+01571: }
+01572: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: شب
+02196: 
+02197:         meridiem_pattern = (
+02198: 
+02199:             r"صبح|بامداد|ظهر|بعدازظهر|عصر|شب"
+02200: 
+02201:         )
+02202: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: شب
+04308: 
+04309:         return (
+04310: 
+04311:             "منظورتان صبح است یا شب؟ "
+04312: 
+04313:             "برای نمونه: ساعت ۱۰ صبح "
+04314: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: شب
+04312: 
+04313:             "برای نمونه: ساعت ۱۰ صبح "
+04314: 
+04315:             "یا ساعت ۱۰ شب."
+04316: 
+04317:         )
+04318: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: شب
+04352: 
+04353:             "مثلاً ساعت ۸ صبح یا "
+04354: 
+04355:             "۱۰ و ۵۰ دقیقه شب."
+04356: 
+04357:         )
+04358: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: شب
+05424: 
+05425:     # A corrective message such as:
+05426: 
+05427:     # "نه، ساعت ده و پنجاه دقیقه شب"
+05428: 
+05429:     # must replace the previous time.
+05430: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: شب
+05670:     "اسحقاقى": "استحقاقی",
+05671:     "ترد": "تردد",
+05672:     "یکشنیه": "یکشنبه",
+05673:     "یکشبه": "یکشنبه",
+05674:     "سهشنه": "سه شنبه",
+05675:     "سهشنیه": "سه شنبه",
+05676:     "چهارشنه": "چهارشنبه",
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: شب
+05685:     "بعدازظهر": "PM",
+05686:     "بعد از ظهر": "PM",
+05687:     "عصر": "PM",
+05688:     "شب": "PM",
+05689: }
+05690: 
+05691: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: نیم
+01876: 
+01877:         rf"(?P<hour>{_HOUR_VALUE_PATTERN})"
+01878: 
+01879:         rf"\s+و\s+نیم",
+01880: 
+01881:         text,
+01882: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: نیم
+05945:             minute_text,
+05946:         ).strip()
+05947: 
+05948:         if minute_text == "نیم":
+05949:             minute = 30
+05950: 
+05951:         elif minute_text == "ربع":
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: نیم
+06095: 
+06096:         elif minute == 30:
+06097:             time_label = (
+06098:                 f"{hour} و نیم"
+06099:             )
+06100: 
+06101:         else:
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: مرداد
+00578: 
+00579:     "تیر": 4,
+00580: 
+00581:     "مرداد": 5,
+00582: 
+00583:     "شهریور": 6,
+00584: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: مرداد
+00928: 
+00929:     patterns = (
+00930: 
+00931:         # Examples: 9 مرداد / نهم مرداد / روز 9 مرداد ماه
+00932: 
+00933:         rf"(?:\bروز\s+)?"
+00934: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: مرداد
+00944: 
+00945: 
+00946: 
+00947:         # Examples: مرداد 9 / مرداد ماه نهم
+00948: 
+00949:         rf"(?P<month>{_MONTH_NAME_PATTERN})"
+00950: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: اسحقاقی
+05666: 
+05667: 
+05668: _CONTEXT_TYPO_REPLACEMENTS_V1 = {
+05669:     "اسحقاقی": "استحقاقی",
+05670:     "اسحقاقى": "استحقاقی",
+05671:     "ترد": "تردد",
+05672:     "یکشنیه": "یکشنبه",
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: استحقاقی
+00142: 
+00143:         "استعلاجي": "استعلاجی",
+00144: 
+00145:         "استحقاقي": "استحقاقی",
+00146: 
+00147:     }
+00148: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: استحقاقی
+05666: 
+05667: 
+05668: _CONTEXT_TYPO_REPLACEMENTS_V1 = {
+05669:     "اسحقاقی": "استحقاقی",
+05670:     "اسحقاقى": "استحقاقی",
+05671:     "ترد": "تردد",
+05672:     "یکشنیه": "یکشنبه",
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: استحقاقی
+05667: 
+05668: _CONTEXT_TYPO_REPLACEMENTS_V1 = {
+05669:     "اسحقاقی": "استحقاقی",
+05670:     "اسحقاقى": "استحقاقی",
+05671:     "ترد": "تردد",
+05672:     "یکشنیه": "یکشنبه",
+05673:     "یکشبه": "یکشنبه",
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: استحقاقی
+06263:     has_leave_type = bool(
+06264:         tokens.intersection(
+06265:             {
+06266:                 "استحقاقی",
+06267:                 "استعلاجی",
+06268:                 "ساعتی",
+06269:                 "روزانه",
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ترد
+03262: 
+03263:     attendance_words = {
+03264: 
+03265:         "تردد",
+03266: 
+03267:         "ورود",
+03268: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ترد
+03292: 
+03293:         "نمایش بده",
+03294: 
+03295:         "تردد من",
+03296: 
+03297:         "سوابق تردد",
+03298: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ترد
+03294: 
+03295:         "تردد من",
+03296: 
+03297:         "سوابق تردد",
+03298: 
+03299:         "گزارش تردد",
+03300: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ترد
+03296: 
+03297:         "سوابق تردد",
+03298: 
+03299:         "گزارش تردد",
+03300: 
+03301:     ]
+03302: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ترد
+04348: 
+04349:         return (
+04350: 
+04351:             "ساعت تردد را بفرمایید؛ "
+04352: 
+04353:             "مثلاً ساعت ۸ صبح یا "
+04354: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ترد
+04362: 
+04363:         return (
+04364: 
+04365:             "این تردد مربوط به ورود است "
+04366: 
+04367:             "یا خروج؟"
+04368: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ترد
+04374: 
+04375:         return (
+04376: 
+04377:             "ساعت شروع تردد را بفرمایید."
+04378: 
+04379:         )
+04380: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ترد
+04384: 
+04385:         return (
+04386: 
+04387:             "ساعت پایان تردد را بفرمایید."
+04388: 
+04389:         )
+04390: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: تردد
+03262: 
+03263:     attendance_words = {
+03264: 
+03265:         "تردد",
+03266: 
+03267:         "ورود",
+03268: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: تردد
+03292: 
+03293:         "نمایش بده",
+03294: 
+03295:         "تردد من",
+03296: 
+03297:         "سوابق تردد",
+03298: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: تردد
+03294: 
+03295:         "تردد من",
+03296: 
+03297:         "سوابق تردد",
+03298: 
+03299:         "گزارش تردد",
+03300: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: تردد
+03296: 
+03297:         "سوابق تردد",
+03298: 
+03299:         "گزارش تردد",
+03300: 
+03301:     ]
+03302: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: تردد
+04348: 
+04349:         return (
+04350: 
+04351:             "ساعت تردد را بفرمایید؛ "
+04352: 
+04353:             "مثلاً ساعت ۸ صبح یا "
+04354: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: تردد
+04362: 
+04363:         return (
+04364: 
+04365:             "این تردد مربوط به ورود است "
+04366: 
+04367:             "یا خروج؟"
+04368: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: تردد
+04374: 
+04375:         return (
+04376: 
+04377:             "ساعت شروع تردد را بفرمایید."
+04378: 
+04379:         )
+04380: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: تردد
+04384: 
+04385:         return (
+04386: 
+04387:             "ساعت پایان تردد را بفرمایید."
+04388: 
+04389:         )
+04390: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: FOOD
+02568: 
+02569: 
+02570: 
+02571: _FOOD_WORDS = {
+02572: 
+02573:     "غذا",
+02574: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: FOOD
+02684: 
+02685: ) -> tuple[str, str] | None:
+02686: 
+02687:     # FOOD_RECOMMENDATION_V3
+02688: 
+02689:     has_food_word = _contains_any_word(
+02690: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: FOOD
+02690: 
+02691:         text,
+02692: 
+02693:         _FOOD_WORDS,
+02694: 
+02695:     )
+02696: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: FOOD
+02798: 
+02799:         return (
+02800: 
+02801:             "FOOD",
+02802: 
+02803:             "CANCEL_FOOD",
+02804: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: FOOD
+02800: 
+02801:             "FOOD",
+02802: 
+02803:             "CANCEL_FOOD",
+02804: 
+02805:         )
+02806: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: FOOD
+02834: 
+02835:         return (
+02836: 
+02837:             "FOOD",
+02838: 
+02839:             "SHOW_FOOD_RESERVATION",
+02840: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: FOOD
+02836: 
+02837:             "FOOD",
+02838: 
+02839:             "SHOW_FOOD_RESERVATION",
+02840: 
+02841:         )
+02842: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: FOOD
+02912: 
+02913:         return (
+02914: 
+02915:             "FOOD",
+02916: 
+02917:             "RESERVE_FOOD",
+02918: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: LEAVE
+03106: 
+03107:         return (
+03108: 
+03109:             "LEAVE",
+03110: 
+03111:             "GET_LEAVE_BALANCE",
+03112: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: LEAVE
+03108: 
+03109:             "LEAVE",
+03110: 
+03111:             "GET_LEAVE_BALANCE",
+03112: 
+03113:         )
+03114: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: LEAVE
+03124: 
+03125:         return (
+03126: 
+03127:             "LEAVE",
+03128: 
+03129:             "CANCEL_LEAVE",
+03130: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: LEAVE
+03126: 
+03127:             "LEAVE",
+03128: 
+03129:             "CANCEL_LEAVE",
+03130: 
+03131:         )
+03132: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: LEAVE
+03142: 
+03143:         return (
+03144: 
+03145:             "LEAVE",
+03146: 
+03147:             "CREATE_LEAVE",
+03148: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: LEAVE
+03144: 
+03145:             "LEAVE",
+03146: 
+03147:             "CREATE_LEAVE",
+03148: 
+03149:         )
+03150: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: LEAVE
+03160: 
+03161:         return (
+03162: 
+03163:             "LEAVE",
+03164: 
+03165:             "SHOW_LEAVE_REQUESTS",
+03166: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: LEAVE
+03162: 
+03163:             "LEAVE",
+03164: 
+03165:             "SHOW_LEAVE_REQUESTS",
+03166: 
+03167:         )
+03168: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: MISSION
+03202: 
+03203:         return (
+03204: 
+03205:             "MISSION",
+03206: 
+03207:             "CANCEL_MISSION",
+03208: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: MISSION
+03204: 
+03205:             "MISSION",
+03206: 
+03207:             "CANCEL_MISSION",
+03208: 
+03209:         )
+03210: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: MISSION
+03220: 
+03221:         return (
+03222: 
+03223:             "MISSION",
+03224: 
+03225:             "CREATE_MISSION",
+03226: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: MISSION
+03222: 
+03223:             "MISSION",
+03224: 
+03225:             "CREATE_MISSION",
+03226: 
+03227:         )
+03228: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: MISSION
+03238: 
+03239:         return (
+03240: 
+03241:             "MISSION",
+03242: 
+03243:             "SHOW_MISSIONS",
+03244: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: MISSION
+03240: 
+03241:             "MISSION",
+03242: 
+03243:             "SHOW_MISSIONS",
+03244: 
+03245:         )
+03246: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: MISSION
+03246: 
+03247: 
+03248: 
+03249:     return "MISSION", "MISSION_UNKNOWN"
+03250: 
+03251: 
+03252: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: MISSION
+03626: 
+03627:         "LEAVE",
+03628: 
+03629:         "MISSION",
+03630: 
+03631:     }:
+03632: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ATTENDANCE
+03312: 
+03313:         return (
+03314: 
+03315:             "ATTENDANCE",
+03316: 
+03317:             "SHOW_ATTENDANCE",
+03318: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ATTENDANCE
+03314: 
+03315:             "ATTENDANCE",
+03316: 
+03317:             "SHOW_ATTENDANCE",
+03318: 
+03319:         )
+03320: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ATTENDANCE
+03336: 
+03337:         return (
+03338: 
+03339:             "ATTENDANCE",
+03340: 
+03341:             "CREATE_TIME_EVENT_RANGE",
+03342: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ATTENDANCE
+03362: 
+03363:         return (
+03364: 
+03365:             "ATTENDANCE",
+03366: 
+03367:             "CREATE_TIME_EVENT",
+03368: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ATTENDANCE
+03372: 
+03373:     return (
+03374: 
+03375:         "ATTENDANCE",
+03376: 
+03377:         "SHOW_ATTENDANCE",
+03378: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ATTENDANCE
+03374: 
+03375:         "ATTENDANCE",
+03376: 
+03377:         "SHOW_ATTENDANCE",
+03378: 
+03379:     )
+03380: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ATTENDANCE
+03646: 
+03647: 
+03648: 
+03649:     if domain == "ATTENDANCE":
+03650: 
+03651:         event_type = _extract_event_type(
+03652: 
+
+
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+TERM: ATTENDANCE
+04500: 
+04501: 
+04502: 
+04503:     if domain == "ATTENDANCE":
+04504: 
+04505:         return (
+04506: 
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: صبح
+00089:         "سلام",
+00090:         "درود",
+00091:         "سلام خوبی",
+00092:         "صبح بخیر",
+00093:         "عصر بخیر",
+00094:         "شب بخیر",
+00095:     }
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: شب
+00091:         "سلام خوبی",
+00092:         "صبح بخیر",
+00093:         "عصر بخیر",
+00094:         "شب بخیر",
+00095:     }
+00096: 
+00097:     HELP_TERMS = {
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: استحقاقی
+00122:             "مأموریت": 5,
+00123:             "اضافه کاری": 4,
+00124:             "اضافه‌کاری": 4,
+00125:             "استحقاقی": 3,
+00126:             "استعلاجی": 3,
+00127:             "ساعتی": 1,
+00128:         },
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ترد
+00043:     الگوریتم محافظ تشخیص درخواست.
+00044: 
+00045:     این کلاس قبل از فراخوانی سرویس غذا، منابع انسانی
+00046:     یا تردد اجرا می‌شود و از ورود درخواست‌های بی‌ربط،
+00047:     مبهم یا پشتیبانی‌نشده جلوگیری می‌کند.
+00048:     """
+00049: 
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ترد
+00127:             "ساعتی": 1,
+00128:         },
+00129:         "ATTENDANCE": {
+00130:             "تردد": 5,
+00131:             "ساعت زنی": 5,
+00132:             "ساعت‌زنی": 5,
+00133:             "ورود": 2,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ترد
+00429:                 reply=(
+00430:                     "متأسفم، در حال حاضر این خدمت در حوزه "
+00431:                     "قابلیت‌های من قرار ندارد. من می‌توانم "
+00432:                     "در امور غذا، مرخصی، مأموریت و تردد "
+00433:                     "به شما کمک کنم."
+00434:                 ),
+00435:                 suggestions=(
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ترد
+00435:                 suggestions=(
+00436:                     "منوی غذای این هفته را نشان بده",
+00437:                     "مانده مرخصی من چقدر است؟",
+00438:                     "تردد امروز را نشان بده",
+00439:                 ),
+00440:             )
+00441: 
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ترد
+00454:                 confidence=0.99,
+00455:                 reply=(
+00456:                     "متأسفم، من فقط برای خدمات سازمانی "
+00457:                     "مرتبط با غذا، مرخصی، مأموریت و تردد "
+00458:                     "طراحی شده‌ام و قادر به پاسخ‌گویی به "
+00459:                     "این پرسش نیستم."
+00460:                 ),
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ترد
+00508:                     "متأسفم، این پرسش در محدوده خدمات فعلی "
+00509:                     "من نیست یا منظور آن را با اطمینان کافی "
+00510:                     "تشخیص ندادم. من در زمینه غذا، مرخصی، "
+00511:                     "مأموریت و تردد پاسخ‌گو هستم."
+00512:                 ),
+00513:                 suggestions=(
+00514:                     "چه قابلیت‌هایی داری؟",
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ترد
+00541:                     confidence=0.88,
+00542:                     reply=(
+00543:                         "در پیام شما بیش از یک موضوع تشخیص داده شد. "
+00544:                         "لطفاً درخواست غذا، مرخصی، مأموریت یا تردد "
+00545:                         "را جداگانه ارسال کنید."
+00546:                     ),
+00547:                 )
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ترد
+00581:             domain_name = {
+00582:                 "FOOD": "غذا",
+00583:                 "LEAVE": "مرخصی یا مأموریت",
+00584:                 "ATTENDANCE": "تردد",
+00585:                 "DAILY_BRIEF": "گزارش روزانه",
+00586:             }.get(
+00587:                 top_domain,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: تردد
+00043:     الگوریتم محافظ تشخیص درخواست.
+00044: 
+00045:     این کلاس قبل از فراخوانی سرویس غذا، منابع انسانی
+00046:     یا تردد اجرا می‌شود و از ورود درخواست‌های بی‌ربط،
+00047:     مبهم یا پشتیبانی‌نشده جلوگیری می‌کند.
+00048:     """
+00049: 
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: تردد
+00127:             "ساعتی": 1,
+00128:         },
+00129:         "ATTENDANCE": {
+00130:             "تردد": 5,
+00131:             "ساعت زنی": 5,
+00132:             "ساعت‌زنی": 5,
+00133:             "ورود": 2,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: تردد
+00429:                 reply=(
+00430:                     "متأسفم، در حال حاضر این خدمت در حوزه "
+00431:                     "قابلیت‌های من قرار ندارد. من می‌توانم "
+00432:                     "در امور غذا، مرخصی، مأموریت و تردد "
+00433:                     "به شما کمک کنم."
+00434:                 ),
+00435:                 suggestions=(
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: تردد
+00435:                 suggestions=(
+00436:                     "منوی غذای این هفته را نشان بده",
+00437:                     "مانده مرخصی من چقدر است؟",
+00438:                     "تردد امروز را نشان بده",
+00439:                 ),
+00440:             )
+00441: 
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: تردد
+00454:                 confidence=0.99,
+00455:                 reply=(
+00456:                     "متأسفم، من فقط برای خدمات سازمانی "
+00457:                     "مرتبط با غذا، مرخصی، مأموریت و تردد "
+00458:                     "طراحی شده‌ام و قادر به پاسخ‌گویی به "
+00459:                     "این پرسش نیستم."
+00460:                 ),
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: تردد
+00508:                     "متأسفم، این پرسش در محدوده خدمات فعلی "
+00509:                     "من نیست یا منظور آن را با اطمینان کافی "
+00510:                     "تشخیص ندادم. من در زمینه غذا، مرخصی، "
+00511:                     "مأموریت و تردد پاسخ‌گو هستم."
+00512:                 ),
+00513:                 suggestions=(
+00514:                     "چه قابلیت‌هایی داری؟",
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: تردد
+00541:                     confidence=0.88,
+00542:                     reply=(
+00543:                         "در پیام شما بیش از یک موضوع تشخیص داده شد. "
+00544:                         "لطفاً درخواست غذا، مرخصی، مأموریت یا تردد "
+00545:                         "را جداگانه ارسال کنید."
+00546:                     ),
+00547:                 )
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: تردد
+00581:             domain_name = {
+00582:                 "FOOD": "غذا",
+00583:                 "LEAVE": "مرخصی یا مأموریت",
+00584:                 "ATTENDANCE": "تردد",
+00585:                 "DAILY_BRIEF": "گزارش روزانه",
+00586:             }.get(
+00587:                 top_domain,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: FOOD
+00047:     مبهم یا پشتیبانی‌نشده جلوگیری می‌کند.
+00048:     """
+00049: 
+00050:     # FOOD_FINAL_PART1_GUARD_V1
+00051:     CONTROL_REPLIES = {
+00052:         "بله",
+00053:         "آره",
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: FOOD
+00106:     }
+00107: 
+00108:     DOMAIN_TERMS = {
+00109:         "FOOD": {
+00110:             "غذا": 4,
+00111:             "منو": 4,
+00112:             "ناهار": 3,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: FOOD
+00547:                 )
+00548: 
+00549:         if (
+00550:             top_domain == "FOOD"
+00551:             and self._contains_any(
+00552:                 text,
+00553:                 self.HISTORY_TERMS,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: FOOD
+00556:             return IntentDecision(
+00557:                 allowed=False,
+00558:                 status="UNSUPPORTED",
+00559:                 domain="FOOD",
+00560:                 intent="FOOD_HISTORICAL_RESERVATION",
+00561:                 confidence=0.98,
+00562:                 reply=(
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: FOOD
+00557:                 allowed=False,
+00558:                 status="UNSUPPORTED",
+00559:                 domain="FOOD",
+00560:                 intent="FOOD_HISTORICAL_RESERVATION",
+00561:                 confidence=0.98,
+00562:                 reply=(
+00563:                     "متأسفم، در حال حاضر امکان بررسی رزرو غذای "
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: FOOD
+00579: 
+00580:         if intent == "DOMAIN_ONLY":
+00581:             domain_name = {
+00582:                 "FOOD": "غذا",
+00583:                 "LEAVE": "مرخصی یا مأموریت",
+00584:                 "ATTENDANCE": "تردد",
+00585:                 "DAILY_BRIEF": "گزارش روزانه",
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: FOOD
+00663:         ):
+00664:             return "READ"
+00665: 
+00666:         if domain == "FOOD" and (
+00667:             "منو" in text
+00668:             or "غذاها" in text
+00669:             or "غذای هفته" in text
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: FOOD
+00679:     def _domain_suggestions(
+00680:         domain: str,
+00681:     ) -> tuple[str, ...]:
+00682:         if domain == "FOOD":
+00683:             return (
+00684:                 "منوی غذای این هفته را نشان بده",
+00685:                 "برای این هفته غذا پیشنهاد بده",
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: LEAVE
+00116:             "رزرو غذا": 5,
+00117:             "غذای هفته": 5,
+00118:         },
+00119:         "LEAVE": {
+00120:             "مرخصی": 5,
+00121:             "ماموریت": 5,
+00122:             "مأموریت": 5,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: LEAVE
+00580:         if intent == "DOMAIN_ONLY":
+00581:             domain_name = {
+00582:                 "FOOD": "غذا",
+00583:                 "LEAVE": "مرخصی یا مأموریت",
+00584:                 "ATTENDANCE": "تردد",
+00585:                 "DAILY_BRIEF": "گزارش روزانه",
+00586:             }.get(
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: LEAVE
+00686:                 "رزروهای فعال من را نشان بده",
+00687:             )
+00688: 
+00689:         if domain == "LEAVE":
+00690:             return (
+00691:                 "مانده مرخصی من چقدر است؟",
+00692:                 "برای فردا مرخصی ثبت کن",
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ATTENDANCE
+00126:             "استعلاجی": 3,
+00127:             "ساعتی": 1,
+00128:         },
+00129:         "ATTENDANCE": {
+00130:             "تردد": 5,
+00131:             "ساعت زنی": 5,
+00132:             "ساعت‌زنی": 5,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ATTENDANCE
+00581:             domain_name = {
+00582:                 "FOOD": "غذا",
+00583:                 "LEAVE": "مرخصی یا مأموریت",
+00584:                 "ATTENDANCE": "تردد",
+00585:                 "DAILY_BRIEF": "گزارش روزانه",
+00586:             }.get(
+00587:                 top_domain,
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ATTENDANCE
+00670:         ):
+00671:             return "READ_MENU"
+00672: 
+00673:         if domain == "ATTENDANCE":
+00674:             return "READ_ATTENDANCE"
+00675: 
+00676:         return "DOMAIN_ONLY"
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ATTENDANCE
+00671:             return "READ_MENU"
+00672: 
+00673:         if domain == "ATTENDANCE":
+00674:             return "READ_ATTENDANCE"
+00675: 
+00676:         return "DOMAIN_ONLY"
+00677: 
+
+
+FILE: D:\serviceAi\app\application\services\intent_guard.py
+TERM: ATTENDANCE
+00693:                 "درخواست‌های مرخصی من را نشان بده",
+00694:             )
+00695: 
+00696:         if domain == "ATTENDANCE":
+00697:             return (
+00698:                 "تردد امروز را نشان بده",
+00699:                 "تردد ساعت 08:00 امروز را ثبت کن",
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: ترد
+00315: 
+00316:         raise AppError(
+00317:             (
+00318:                 "ثبت تردد برای زمان آینده "
+00319:                 "امکان‌پذیر نیست. لطفاً تاریخ "
+00320:                 "و ساعت گذشته یا زمان فعلی "
+00321:                 "را اعلام کنید."
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: ترد
+00712:                 "CREATE_TIME_EVENT": {
+00713:                     "nextAction": None,
+00714:                     "message": (
+00715:                         "این تردد قبلاً ثبت شده است و از این بخش "
+00716:                         "امکان لغو آن وجود ندارد."
+00717:                     ),
+00718:                 },
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: ترد
+01069: 
+01070:             if not valid:
+01071:                 raise ConflictError(
+01072:                     "تردد مشابه قبلاً ثبت شده است.",
+01073:                     details={
+01074:                         "existingTime": existing,
+01075:                     },
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: تردد
+00315: 
+00316:         raise AppError(
+00317:             (
+00318:                 "ثبت تردد برای زمان آینده "
+00319:                 "امکان‌پذیر نیست. لطفاً تاریخ "
+00320:                 "و ساعت گذشته یا زمان فعلی "
+00321:                 "را اعلام کنید."
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: تردد
+00712:                 "CREATE_TIME_EVENT": {
+00713:                     "nextAction": None,
+00714:                     "message": (
+00715:                         "این تردد قبلاً ثبت شده است و از این بخش "
+00716:                         "امکان لغو آن وجود ندارد."
+00717:                     ),
+00718:                 },
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: تردد
+01069: 
+01070:             if not valid:
+01071:                 raise ConflictError(
+01072:                     "تردد مشابه قبلاً ثبت شده است.",
+01073:                     details={
+01074:                         "existingTime": existing,
+01075:                     },
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: FOOD
+00035:     "DOWNSTREAM_CIRCUIT_OPEN",
+00036: }
+00037: 
+00038: DEFAULT_FOOD_MEAL_ID = 1
+00039: 
+00040: 
+00041: class ActionService:
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: FOOD
+00702:                         "برای لغو مرخصی، درخواست حذف مرخصی را ثبت کنید."
+00703:                     ),
+00704:                 },
+00705:                 "RESERVE_FOOD": {
+00706:                     "nextAction": "CANCEL_FOOD",
+00707:                     "message": (
+00708:                         "رزرو غذا قبلاً با موفقیت انجام شده است. "
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: FOOD
+00703:                     ),
+00704:                 },
+00705:                 "RESERVE_FOOD": {
+00706:                     "nextAction": "CANCEL_FOOD",
+00707:                     "message": (
+00708:                         "رزرو غذا قبلاً با موفقیت انجام شده است. "
+00709:                         "برای لغو آن، از گزینه لغو رزرو غذا استفاده کنید."
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: FOOD
+00723:                         "و نیازی به لغو دوباره ندارد."
+00724:                     ),
+00725:                 },
+00726:                 "CANCEL_FOOD": {
+00727:                     "nextAction": None,
+00728:                     "message": (
+00729:                         "لغو رزرو غذا قبلاً با موفقیت انجام شده است "
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: FOOD
+00730:                         "و نیازی به لغو دوباره ندارد."
+00731:                     ),
+00732:                 },
+00733:                 "RATE_FOOD": {
+00734:                     "nextAction": None,
+00735:                     "message": (
+00736:                         "امتیاز غذا قبلاً ثبت شده است و این عملیات "
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: FOOD
+00833:             payload,
+00834:         )
+00835: 
+00836:         if action_type == "RESERVE_FOOD":
+00837:             food_context = self._food_context_from_payload(
+00838:                 context,
+00839:                 payload,
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: FOOD
+00845:                 idempotency_key=idempotency_key,
+00846:             )
+00847: 
+00848:         if action_type == "CANCEL_FOOD":
+00849:             food_context = self._food_context_from_payload(
+00850:                 context,
+00851:                 payload,
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: FOOD
+00857:                 idempotency_key=idempotency_key,
+00858:             )
+00859: 
+00860:         # FOOD_CHANGE_ACTION_FINAL_V1
+00861:         if action_type == "CHANGE_FOOD":
+00862:             food_context = self._food_context_from_payload(
+00863:                 context,
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: LEAVE
+00694:                 str,
+00695:                 dict[str, Any],
+00696:             ] = {
+00697:                 "CREATE_LEAVE": {
+00698:                     "nextAction": "DELETE_LEAVE",
+00699:                     "message": (
+00700:                         "این درخواست مرخصی قبلاً با موفقیت ثبت شده است "
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: LEAVE
+00695:                 dict[str, Any],
+00696:             ] = {
+00697:                 "CREATE_LEAVE": {
+00698:                     "nextAction": "DELETE_LEAVE",
+00699:                     "message": (
+00700:                         "این درخواست مرخصی قبلاً با موفقیت ثبت شده است "
+00701:                         "و دیگر از این مرحله قابل لغو نیست. "
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: LEAVE
+00716:                         "امکان لغو آن وجود ندارد."
+00717:                     ),
+00718:                 },
+00719:                 "DELETE_LEAVE": {
+00720:                     "nextAction": None,
+00721:                     "message": (
+00722:                         "درخواست حذف مرخصی قبلاً با موفقیت انجام شده است "
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: LEAVE
+01044:                 idempotency_key=idempotency_key,
+01045:             )
+01046: 
+01047:         if action_type == "DELETE_LEAVE":
+01048:             return await self.hr.delete_leave_request(
+01049:                 context,
+01050:                 str(payload["requestID"]),
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: LEAVE
+01083:                 idempotency_key=idempotency_key,
+01084:             )
+01085: 
+01086:         if action_type == "CREATE_LEAVE":
+01087:             leave_types = await self.hr.get_leave_types(
+01088:                 context
+01089:             )
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: LEAVE
+01242:                 "reserveId",
+01243:                 "rate",
+01244:             ),
+01245:             "DELETE_LEAVE": (
+01246:                 "requestID",
+01247:                 "leaveKey",
+01248:             ),
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: LEAVE
+01250:                 "eventDate",
+01251:                 "eventTime",
+01252:             ),
+01253:             "CREATE_LEAVE": (
+01254:                 "absenceTypeCode",
+01255:                 "startDate",
+01256:             ),
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: ATTENDANCE
+00051:         self.food = food
+00052:         self.hr = hr
+00053: 
+00054:     # ATTENDANCE_FUTURE_ACTION_GUARD_V1
+00055:     @staticmethod
+00056:     def _attendance_ascii_digits(
+00057:         value: Any,
+
+
+FILE: D:\serviceAi\app\application\services\action_service.py
+TERM: ATTENDANCE
+00322:             ),
+00323:             status_code=409,
+00324:             code=(
+00325:                 "FUTURE_ATTENDANCE_NOT_ALLOWED"
+00326:             ),
+00327:             details={
+00328:                 "reason": reason,
+
+
+FILE: D:\serviceAi\app\domain\text.py
+TERM: extract_times
+00161:     return day >= threshold
+00162: 
+00163: 
+00164: def extract_times(text: str) -> list[str]:
+00165:     normalized = normalize_persian_text(text)
+00166:     return [f"{int(h):02d}:{int(m):02d}:{int(s or 0):02d}" for h, m, s in TIME_RE.findall(normalized)]
+00167: 
+
+
+FILE: D:\serviceAi\app\domain\text.py
+TERM: extract_jalali_dates
+00101:     return f"{year:04d}/{month:02d}/{day:02d}"
+00102: 
+00103: 
+00104: def extract_jalali_dates(text: str) -> list[str]:
+00105:     normalized = normalize_persian_text(text)
+00106:     return [normalize_jalali_date(match) for match in JALALI_DATE_RE.findall(normalized)]
+00107: 
+
+
+FILE: D:\serviceAi\app\domain\models.py
+TERM: FOOD
+00049: 
+00050: 
+00051: class ActionType(str, Enum):
+00052:     reserve_food = "RESERVE_FOOD"
+00053:     cancel_food = "CANCEL_FOOD"
+00054:     rate_food = "RATE_FOOD"
+00055:     create_leave = "CREATE_LEAVE"
+
+
+FILE: D:\serviceAi\app\domain\models.py
+TERM: FOOD
+00050: 
+00051: class ActionType(str, Enum):
+00052:     reserve_food = "RESERVE_FOOD"
+00053:     cancel_food = "CANCEL_FOOD"
+00054:     rate_food = "RATE_FOOD"
+00055:     create_leave = "CREATE_LEAVE"
+00056:     delete_leave = "DELETE_LEAVE"
+
+
+FILE: D:\serviceAi\app\domain\models.py
+TERM: FOOD
+00051: class ActionType(str, Enum):
+00052:     reserve_food = "RESERVE_FOOD"
+00053:     cancel_food = "CANCEL_FOOD"
+00054:     rate_food = "RATE_FOOD"
+00055:     create_leave = "CREATE_LEAVE"
+00056:     delete_leave = "DELETE_LEAVE"
+00057:     create_time_event = "CREATE_TIME_EVENT"
+
+
+FILE: D:\serviceAi\app\domain\models.py
+TERM: LEAVE
+00052:     reserve_food = "RESERVE_FOOD"
+00053:     cancel_food = "CANCEL_FOOD"
+00054:     rate_food = "RATE_FOOD"
+00055:     create_leave = "CREATE_LEAVE"
+00056:     delete_leave = "DELETE_LEAVE"
+00057:     create_time_event = "CREATE_TIME_EVENT"
+00058:     dismiss = "DISMISS"
+
+
+FILE: D:\serviceAi\app\domain\models.py
+TERM: LEAVE
+00053:     cancel_food = "CANCEL_FOOD"
+00054:     rate_food = "RATE_FOOD"
+00055:     create_leave = "CREATE_LEAVE"
+00056:     delete_leave = "DELETE_LEAVE"
+00057:     create_time_event = "CREATE_TIME_EVENT"
+00058:     dismiss = "DISMISS"
+00059:     open_page = "OPEN_PAGE"
+
+
+FILE: D:\serviceAi\app\core\config.py
+TERM: FOOD
+00040:     trusted_gateway_header: str = Field(default="X-Employee-Id", alias="TRUSTED_GATEWAY_HEADER")
+00041: 
+00042:     hr_api_base_url: str = Field(default="https://var-prd-test3.zarholding.com:4433", alias="HR_API_BASE_URL")
+00043:     food_api_base_url: str = Field(default="https://var-prd-test3.zarholding.com:4433", alias="FOOD_API_BASE_URL")
+00044:     api_version: str = Field(default="1", alias="API_VERSION")
+00045:     request_timeout_seconds: float = Field(default=15, alias="REQUEST_TIMEOUT_SECONDS", gt=0, le=120)
+00046:     connect_timeout_seconds: float = Field(default=5, alias="CONNECT_TIMEOUT_SECONDS", gt=0, le=60)

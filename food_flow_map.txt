@@ -1,0 +1,48 @@
+
+=== chat_service.py ===
+623:                     "درخواست را دقیق‌تر بگو. می‌توانم منوی غذا، "
+1169:     def _enrich_food_nlu_result(
+1748:     def _merge_menu_days(
+1783:     def _infer_menu_date(
+2012:                 "رزرو غذا با موفقیت انجام شد."
+2015:                 "رزرو غذا با موفقیت لغو شد."
+2220:     async def _resume_food_request(
+2238:             or "منوی غذا را نشان بده"
+2630:     def _is_food(text: str) -> bool:
+2743:     async def _handle_food(
+2929:                 "ثبت غذا",
+3217:                 "label": "تأیید و رزرو غذا",
+3287:     def _infer_menu_date_from_days(
+3329:     def _filter_menu_days(
+3375:     def _menu_reply(
+3434:     def _reservation_status_reply(
+3486:     def _food_query_tokens(
+3535:     def _find_food_candidates(
+3634:     async def _prepare_named_food_reservation(
+3896:                     "تأیید و رزرو غذا"
+3916:     async def _prepare_cancel_food(
+3960:                         f"حذف رزرو غذا برای "
+3969:                             "تأیید و حذف رزرو غذا"
+3986:                 "برای تاریخ گفته‌شده رزرو غذایی "
+3996:     async def _prepare_food_rating(
+4668:                 "قابلیت‌ها: نمایش و رزرو غذا، لغو رزرو، "
+4681:             "منوی غذای امروز را نشان بده",
+
+=== food_service.py ===
+124:     def __init__(self, client: FoodClient, settings: Settings):
+200:     async def get_weekly_menu(self, context: AgentContext) -> dict[str, Any]:
+209:     async def get_history(self, context: AgentContext) -> list[dict[str, Any]]:
+214:     async def reserve_food(self, context: AgentContext, plan_detail_id: int | str, *, idempotency_key: str | None = None) -> dict[str, Any]:
+240:     async def cancel_food(self, context: AgentContext, plan_detail_id: int | str, *, idempotency_key: str | None = None) -> dict[str, Any]:
+243:             raise AppError("شناسه رزرو غذا معتبر نیست.", code="INVALID_PLAN_DETAIL")
+250:     async def get_rating(self, context: AgentContext, *, reserve_id: int | str = 0, plan_detail_id: int | str = 0) -> dict[str, Any]:
+253:     async def set_rating(
+278:     async def recommend_food(self, context: AgentContext, target_date: str | None = None) -> dict[str, Any]:
+318:     async def _enrich_ratings(self, context: AgentContext, foods: list[dict[str, Any]]) -> None:
+335:     async def _safe_history(self, context: AgentContext) -> list[dict[str, Any]]:
+421:     def _normalize_history(item: dict[str, Any]) -> dict[str, Any]:
+430:     def _favorite_food_names(history: list[dict[str, Any]]) -> list[str]:
+439:     def _rating_summary(data: dict[str, Any]) -> dict[str, Any]:
+458:     def _has_capacity(food: dict[str, Any]) -> bool:
+462:     def _best_food_candidate(self, foods: list[dict[str, Any]], favorite_names: list[str]) -> dict[str, Any] | None:
+478:     def _recommendation_message(self, day: dict[str, Any], food: dict[str, Any], favorite_names: list[str]) -> str:

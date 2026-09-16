@@ -1,0 +1,118 @@
+﻿================ IMPORTS ================
+from __future__ import annotations
+
+from datetime import datetime
+from enum import Enum
+from typing import Any, Generic, TypeVar
+
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    field_validator,
+)
+
+from app.domain.text import (
+    normalize_jalali_date,
+    normalize_persian_text,
+)
+
+T = TypeVar("T")
+
+
+class ApiErrorBody(BaseModel):
+    code: str
+    details: Any = None
+
+
+class ApiResponse(BaseModel, Generic[T]):
+    hasError: bool = False
+    data: T | None = None
+    message: str = ""
+    error: ApiErrorBody | None = None
+
+
+class Severity(str, Enum):
+    info = "info"
+    warning = "warning"
+    danger = "danger"
+    success = "success"
+
+
+class ModuleName(str, Enum):
+    food = "food"
+    leave = "leave"
+
+================ CHAT REQUEST ================
+
+    ظˆط¶ط¹غŒطھ Reminder ط¯ط§ط®ظ„غŒ ط§ط³طھ ظˆ ظ…طµط±ظپâ€Œع©ظ†ظ†ط¯ظ‡ API
+    ظ†غŒط§ط²غŒ ط¨ظ‡ ط§ط±ط³ط§ظ„ status ظ†ط¯ط§ط±ط¯.
+    """
+
+    pass
+
+
+
+class ChatRequest(BaseModel):
+    """
+    Request ط§طµظ„غŒ Agent Chat.
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+    message: str = Field(
+        min_length=1,
+        max_length=2000,
+    )
+
+    context: ChatContextRequest | None = None
+
+    @field_validator("message")
+    @classmethod
+    def message_not_empty(
+        cls,
+        value: str,
+    ) -> str:
+        value = (value or "").strip()
+
+        if not value:
+            raise ValueError(
+                "message is required"
+            )
+
+        return value
+
+
+class ActionRequestBase(EmployeeRequestBase):
+    """
+    ظ…ط¯ظ„ ظ¾ط§غŒظ‡ ط¹ظ…ظ„غŒط§طھ Pending Action.
+    """
+
+    action_id: str = Field(
+        validation_alias=AliasChoices(
+            "actionId",
+            "id",
+        ),
+        min_length=8,
+        max_length=64,
+    )
+
+
+class ConfirmActionRequest(ActionRequestBase):
+    """
+    Confirm ط¨ط±ط§غŒ ط§ط¬ط±ط§غŒ ط¹ظ…ظ„غŒط§طھ ظˆط§ظ‚ط¹غŒ ط¨ظ‡ Session
+    ظ†غŒط§ط² ط¯ط§ط±ط¯.
+    """
+
+    session: UserSession | None = None
+
+
+class CancelActionRequest(ActionRequestBase):
+    """
+    Cancel ظپظ‚ط· actionId ظˆ employeeId ظ†غŒط§ط² ط¯ط§ط±ط¯.
+    """

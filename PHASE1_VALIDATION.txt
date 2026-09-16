@@ -1,0 +1,24 @@
+Holding Smart Agent - Option B Phase 1 Validation
+=================================================
+
+Architecture migration checks:
+- Python compile for current app tree: PASS (50 .py files)
+- AgentOrchestrator focused test: PASS
+- Container import / AgentOrchestrator construction: PASS
+- MonthlyAttendanceHandler non-matching request: PASS
+- /api/agent/chat now routes through AgentOrchestrator: VERIFIED
+- In-app .bak files remaining: 0
+- Existing backups deleted: NO (moved under _archive)
+
+Important pre-existing baseline:
+- test_nlu_core_v2.py: 32 tests executed, 5 failures
+- The original uploaded project has the exact same 5 failures.
+- Therefore these NLU failures are PRE-EXISTING and were not introduced by Phase 1.
+
+Pre-existing failing areas observed:
+- cancel conversation intent case
+- two food-menu recognition cases
+- food reservation-status recognition case
+- invalid-minute clarification case
+
+No claim is made that the complete application is regression-free until real integration/runtime tests are run against the connected HR/Food systems.

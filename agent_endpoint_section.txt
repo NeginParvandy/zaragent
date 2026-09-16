@@ -1,0 +1,181 @@
+280:     )
+281: 
+282:     return ok(
+283:         {
+284:             "status": "ready",
+285:             "database": database,
+286:         },
+287:         "سرویس آماده پاسخ‌گویی است.",
+288:     )
+289: 
+290: 
+291: @router.get(
+292:     "/health",
+293:     response_model=ApiResponse[dict[str, Any]],
+294: )
+295: async def health(
+296:     identity: GatewayIdentity = Depends(
+297:         require_user_identity
+298:     ),
+299: ) -> dict[str, Any]:
+300:     container = get_container()
+301: 
+302:     database = await asyncio.to_thread(
+303:         container.repository.health_check
+304:     )
+305: 
+306:     return ok(
+307:         {
+308:             "status": "ok",
+309:             "service": container.settings.app_name,
+310:             "version": container.settings.app_version,
+311:             "mode": "real-api-only-no-fallback",
+312:             "authenticated": identity.authenticated,
+313:             "database": database,
+314:             "serverLocalTime": local_now(
+315:                 container.settings.app_timezone
+316:             ).isoformat(),
+317:         },
+318:         "وضعیت سرویس دریافت شد.",
+319:     )
+320: 
+321: 
+322: @router.get(
+323:     "/capabilities",
+324:     response_model=ApiResponse[dict[str, Any]],
+325: )
+326: async def capabilities(
+327:     _: GatewayIdentity = Depends(
+328:         require_user_identity
+329:     ),
+330: ) -> dict[str, Any]:
+331:     return ok(
+332:         {
+333:             "dailyBrief": True,
+334:             "reminderEngine": True,
+335:             "chat": True,
+336:             "actionConfirmation": True,
+337:             "food": {
+338:                 "menu": True,
+339:                 "reserve": True,
+340:                 "cancelReservation": True,
+341:                 "ratingAndComments": True,
+342:                 "recommendation": True,
+343:             },
+344:             "hr": {
+345:                 "leaveRequests": True,
+346:                 "leaveCreate": True,
+347:                 "leaveDelete": True,
+348:                 "attendanceRead": True,
+349:                 "attendanceCreate": True,
+350:             },
+351:             "runtimeMode": "no-mock-no-fallback",
+352:         }
+353:     )
+354: 
+355: 
+356: @router.post(
+357:     "/daily-brief",
+358:     response_model=ApiResponse[dict[str, Any]],
+359: )
+360: async def daily_brief(
+361:     request: DailyBriefRequest,
+362:     identity: GatewayIdentity = Depends(
+363:         require_user_identity
+364:     ),
+365: ) -> dict[str, Any]:
+366:     container = get_container()
+367: 
+368:     context = container.context_resolver.resolve(
+369:         request.to_context(),
+370:         identity,
+371:     )
+372: 
+373:     container.context_resolver.require_employee(
+374:         context
+375:     )
+376: 
+377:     data = await container.daily_brief_service.build(
+378:         context
+379:     )
+380: 
+381:     return ok(
+382:         data,
+383:         "گزارش روزانه ساخته شد.",
+384:     )
+385: 
+386: 
+387: @router.post(
+388:     "/reminders/check",
+389:     summary="بررسی و ایجاد یادآوری‌ها",
+390:     description=(
+391:         "در اولین ورود کاربر در هر روز، وضعیت غذا، تردد، "
+392:         "مرخصی و پایان ماه را بررسی می‌کند و یادآوری‌های "
+393:         "لازم را فقط یک بار به اپلیکیشن تحویل می‌دهد."
+394:     ),
+395:     response_model=ApiResponse[dict[str, Any]],
+396: )
+397: async def check_reminders(
+398:     request: ReminderCheckRequest,
+399:     identity: GatewayIdentity = Depends(
+400:         require_user_identity
+401:     ),
+402: ) -> dict[str, Any]:
+403:     container = get_container()
+404: 
+405:     context = container.context_resolver.resolve(
+406:         request.to_context(),
+407:         identity,
+408:     )
+409: 
+410:     container.context_resolver.require_employee(
+411:         context
+412:     )
+413: 
+414:     data = await container.reminder_service.check(
+415:         context
+416:     )
+417: 
+418:     return ok(
+419:         data,
+420:         (
+421:             "وضعیت یادآوری‌های روزانه بررسی شد."
+422:         ),
+423:     )
+424: 
+425: 
+426: @router.post(
+427:     "/reminders",
+428:     summary="دریافت یادآوری‌های فعال",
+429:     description=(
+430:         "یادآوری‌های فعال کاربر را برمی‌گرداند. "
+431:         "وضعیت Reminder داخلی است و در Request ارسال نمی‌شود."
+432:     ),
+433:     response_model=ApiResponse[list[dict[str, Any]]],
+434: )
+435: async def list_reminders(
+436:     request: ReminderListRequest,
+437:     identity: GatewayIdentity = Depends(
+438:         require_user_identity
+439:     ),
+440: ) -> dict[str, Any]:
+441:     container = get_container()
+442: 
+443:     context = container.context_resolver.resolve(
+444:         request.to_context(),
+445:         identity,
+446:     )
+447: 
+448:     employee_id = (
+449:         container.context_resolver.require_employee(
+450:             context
+451:         )
+452:     )
+453: 
+454:     data = await container.reminder_service.list_reminders(
+455:         employee_id
+456:     )
+457: 
+458:     return ok(
+459:         data,
+460:         "لیست یادآوری‌ها دریافت شد.",

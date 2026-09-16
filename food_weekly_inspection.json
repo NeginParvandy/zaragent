@@ -1,0 +1,510 @@
+{
+  "employeeIdMasked": "****0602",
+  "restaurantId": 84,
+  "mealId": 1,
+  "menu": {
+    "restaurantId": 84,
+    "mealId": 1,
+    "days": [
+      {
+        "planId": -32508,
+        "date": "1405/05/04",
+        "miladyDate": "2026-07-26T00:00:00",
+        "dayOfWeek": "یکشنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483225,
+            "planId": -32508,
+            "foodName": "قیمه سیب زمینی",
+            "description": "قیمه با برنج و سیب زمینی",
+            "sideDishesName": "خیارشور و گوجه",
+            "imageName": "62d09df1-ec75-47fa-8041-be0710b95b15.jpg",
+            "count": 11111,
+            "remainCount": 11111,
+            "rate": 3.0
+          },
+          {
+            "planDetailId": -2147483224,
+            "planId": -32508,
+            "foodName": "کوبیده",
+            "description": "گوشت گوسفندی",
+            "sideDishesName": "کاهو",
+            "imageName": "5f760c2c-aa9a-4e47-a49c-2ad807ecf248.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483223,
+            "planId": -32508,
+            "foodName": "جوجه با استخوان",
+            "description": "جوجه کباب با استخوان",
+            "sideDishesName": "ماست",
+            "imageName": "58e34d53-d759-407b-9f7f-fc08b105d5e0.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32507,
+        "date": "1405/05/05",
+        "miladyDate": "2026-07-27T00:00:00",
+        "dayOfWeek": "دوشنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483222,
+            "planId": -32507,
+            "foodName": "پلو یونانی",
+            "description": "همون استامبولی خودمونه",
+            "sideDishesName": "کلم و خیارشور و گوجه",
+            "imageName": "d0c94c45-428a-41b9-9f17-137332651807.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483221,
+            "planId": -32507,
+            "foodName": "پاستا",
+            "description": "همراه سس کشک به جای آلفردو",
+            "sideDishesName": "خیارشور و گوجه",
+            "imageName": "125b771c-bd7f-46d9-a824-cbd30339d982.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483220,
+            "planId": -32507,
+            "foodName": "کوبیده",
+            "description": "گوشت گوسفندی",
+            "sideDishesName": "ماست",
+            "imageName": "5f760c2c-aa9a-4e47-a49c-2ad807ecf248.jpg",
+            "count": 1,
+            "remainCount": 1,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32506,
+        "date": "1405/05/06",
+        "miladyDate": "2026-07-28T00:00:00",
+        "dayOfWeek": "سه شنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483219,
+            "planId": -32506,
+            "foodName": "قیمه سیب زمینی",
+            "description": "قیمه با برنج و سیب زمینی",
+            "sideDishesName": "ماست و خیار",
+            "imageName": "62d09df1-ec75-47fa-8041-be0710b95b15.jpg",
+            "count": 1111,
+            "remainCount": 1111,
+            "rate": 3.0
+          },
+          {
+            "planDetailId": -2147483218,
+            "planId": -32506,
+            "foodName": "قلیه ماهی",
+            "description": "ماهی تن",
+            "sideDishesName": "خیارشور و گوجه",
+            "imageName": "4fbdae5c-6ed8-4ae4-bf04-4dcb40d38e68.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 1.0
+          },
+          {
+            "planDetailId": -2147483217,
+            "planId": -32506,
+            "foodName": "واویشکا",
+            "description": "برنج خالی",
+            "sideDishesName": "ماست",
+            "imageName": "93ad64ba-8153-4770-b3eb-138b507f3f26.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32505,
+        "date": "1405/05/07",
+        "miladyDate": "2026-07-29T00:00:00",
+        "dayOfWeek": "چهارشنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483216,
+            "planId": -32505,
+            "foodName": "استامبولی",
+            "description": "برنج خالی",
+            "sideDishesName": "خیارشور و گوجه",
+            "imageName": "d6e956da-52aa-4f1f-b64b-c4ccf2ac7b56.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483215,
+            "planId": -32505,
+            "foodName": "جوجه با استخوان",
+            "description": "جوجه کباب با استخوان",
+            "sideDishesName": "خیارشور",
+            "imageName": "58e34d53-d759-407b-9f7f-fc08b105d5e0.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483184,
+            "planId": -32505,
+            "foodName": "قیمه سیب زمینی",
+            "description": "قیمه با برنج و سیب زمینی",
+            "sideDishesName": "خیارشور و گوجه",
+            "imageName": "62d09df1-ec75-47fa-8041-be0710b95b15.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 3.0
+          }
+        ]
+      },
+      {
+        "planId": -32504,
+        "date": "1405/05/08",
+        "miladyDate": "2026-07-30T00:00:00",
+        "dayOfWeek": "پنجشنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483214,
+            "planId": -32504,
+            "foodName": "ناگت مرغ",
+            "description": "ناگت خالی",
+            "sideDishesName": "خیارشور و گوجه",
+            "imageName": "91d4a744-c4d9-42df-97ee-cdbbde008b9f.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483213,
+            "planId": -32504,
+            "foodName": "فیله سوخاری",
+            "description": "فیله ",
+            "sideDishesName": "خیارشور و گوجه",
+            "imageName": "1481683d-f96d-4f3d-8d27-7c51ff5f1798.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483212,
+            "planId": -32504,
+            "foodName": "سالاد ماکارونی",
+            "description": "ماکارونی خام",
+            "sideDishesName": "پیاز",
+            "imageName": "e78fb143-988a-4e09-b394-f506a99d2a86.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32503,
+        "date": "1405/05/09",
+        "miladyDate": "2026-07-31T00:00:00",
+        "dayOfWeek": "جمعه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483211,
+            "planId": -32503,
+            "foodName": "کوبیده",
+            "description": "گوشت گوسفندی",
+            "sideDishesName": "کاهو",
+            "imageName": "5f760c2c-aa9a-4e47-a49c-2ad807ecf248.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483210,
+            "planId": -32503,
+            "foodName": "خورشت آلو اسفناج",
+            "description": "سبزی و آلو یه دونه اونم",
+            "sideDishesName": "خیارشور",
+            "imageName": "27c57579-23e0-4b94-9c38-dbb7c69f4ce0.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483185,
+            "planId": -32503,
+            "foodName": "فیله سوخاری",
+            "description": "فیله ",
+            "sideDishesName": "خیارشور",
+            "imageName": "1481683d-f96d-4f3d-8d27-7c51ff5f1798.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32502,
+        "date": "1405/05/10",
+        "miladyDate": "2026-08-01T00:00:00",
+        "dayOfWeek": "شنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483209,
+            "planId": -32502,
+            "foodName": "میرزا قاسمی",
+            "description": "بادمجان خالی",
+            "sideDishesName": "کلم و خیارشور",
+            "imageName": "729dd79d-2289-4784-9e4c-7e07fd3dafe6.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483208,
+            "planId": -32502,
+            "foodName": "گراتن",
+            "description": "پنیر پیتزا فقط",
+            "sideDishesName": "کاهو",
+            "imageName": "05d3adf4-a0fe-4ae1-9ab7-fe611f994ac6.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32501,
+        "date": "1405/05/11",
+        "miladyDate": "2026-08-02T00:00:00",
+        "dayOfWeek": "یکشنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483207,
+            "planId": -32501,
+            "foodName": "ته چین",
+            "description": "ته چین",
+            "sideDishesName": "کلم و خیارشور و گوجه",
+            "imageName": "dee8609a-aa3f-493c-8ed8-2be525480b1f.jpg",
+            "count": 1111,
+            "remainCount": 1111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483206,
+            "planId": -32501,
+            "foodName": "پاستا",
+            "description": "همراه سس کشک به جای آلفردو",
+            "sideDishesName": "کلم و خیارشور و گوجه",
+            "imageName": "125b771c-bd7f-46d9-a824-cbd30339d982.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483183,
+            "planId": -32501,
+            "foodName": "زرشک پلو با مرغ",
+            "description": "رون هست و سینه نداره",
+            "sideDishesName": "سالاد شیرازی",
+            "imageName": "f6a107e3-a6c3-4c10-9996-2a3256609ad1.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32500,
+        "date": "1405/05/12",
+        "miladyDate": "2026-08-03T00:00:00",
+        "dayOfWeek": "دوشنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483187,
+            "planId": -32500,
+            "foodName": "فیله سوخاری",
+            "description": "فیله ",
+            "sideDishesName": "ماست و خیار",
+            "imageName": "1481683d-f96d-4f3d-8d27-7c51ff5f1798.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483205,
+            "planId": -32500,
+            "foodName": "ته چین",
+            "description": "ته چین",
+            "sideDishesName": "کلم و خیارشور و گوجه",
+            "imageName": "dee8609a-aa3f-493c-8ed8-2be525480b1f.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483204,
+            "planId": -32500,
+            "foodName": "قیمه سیب زمینی",
+            "description": "قیمه با برنج و سیب زمینی",
+            "sideDishesName": "کاهو",
+            "imageName": "62d09df1-ec75-47fa-8041-be0710b95b15.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 3.0
+          }
+        ]
+      },
+      {
+        "planId": -32499,
+        "date": "1405/05/13",
+        "miladyDate": "2026-08-04T00:00:00",
+        "dayOfWeek": "سه شنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483203,
+            "planId": -32499,
+            "foodName": "قلیه ماهی",
+            "description": "ماهی تن",
+            "sideDishesName": "خیارشور",
+            "imageName": "4fbdae5c-6ed8-4ae4-bf04-4dcb40d38e68.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 1.0
+          },
+          {
+            "planDetailId": -2147483202,
+            "planId": -32499,
+            "foodName": "خورشت آلو اسفناج",
+            "description": "سبزی و آلو یه دونه اونم",
+            "sideDishesName": "خیارشور و گوجه",
+            "imageName": "27c57579-23e0-4b94-9c38-dbb7c69f4ce0.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32498,
+        "date": "1405/05/14",
+        "miladyDate": "2026-08-05T00:00:00",
+        "dayOfWeek": "چهارشنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483201,
+            "planId": -32498,
+            "foodName": "ساندویچ هات داگ",
+            "description": "هات داگ",
+            "sideDishesName": "کلم و خیارشور و گوجه",
+            "imageName": "84056402-8b43-4850-a949-e3f785fe8592.jpg",
+            "count": 1111,
+            "remainCount": 1111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483200,
+            "planId": -32498,
+            "foodName": "سالاد ماکارونی",
+            "description": "ماکارونی خام",
+            "sideDishesName": "کلم و خیارشور و گوجه",
+            "imageName": "e78fb143-988a-4e09-b394-f506a99d2a86.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32497,
+        "date": "1405/05/15",
+        "miladyDate": "2026-08-06T00:00:00",
+        "dayOfWeek": "پنجشنبه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483199,
+            "planId": -32497,
+            "foodName": "زرشک پلو با مرغ",
+            "description": "رون هست و سینه نداره",
+            "sideDishesName": "کلم و خیارشور",
+            "imageName": "f6a107e3-a6c3-4c10-9996-2a3256609ad1.jpg",
+            "count": 1111,
+            "remainCount": 1111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483198,
+            "planId": -32497,
+            "foodName": "پلو یونانی",
+            "description": "همون استامبولی خودمونه",
+            "sideDishesName": "کلم و خیارشور",
+            "imageName": "d0c94c45-428a-41b9-9f17-137332651807.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      },
+      {
+        "planId": -32496,
+        "date": "1405/05/16",
+        "miladyDate": "2026-08-07T00:00:00",
+        "dayOfWeek": "جمعه",
+        "selectedPlanDetailId": null,
+        "foods": [
+          {
+            "planDetailId": -2147483195,
+            "planId": -32496,
+            "foodName": "استیک مرغ",
+            "description": "یه مقدار سینه",
+            "sideDishesName": "کاهو",
+            "imageName": "8d7e40a8-1604-4fed-adcd-8ee3fd044448.jpg",
+            "count": 1111,
+            "remainCount": 1111,
+            "rate": 0.0
+          },
+          {
+            "planDetailId": -2147483194,
+            "planId": -32496,
+            "foodName": "سوسیس سیب زمینی",
+            "description": "سوسیس",
+            "sideDishesName": "ماست و خیار",
+            "imageName": "a4aa325f-12dc-42f1-a38f-8571e9243601.jpg",
+            "count": 111,
+            "remainCount": 111,
+            "rate": 0.0
+          }
+        ]
+      }
+    ]
+  },
+  "history": [
+    {
+      "reserveId": "-9223372036854774910",
+      "planDetailId": -2147483248,
+      "foodName": "قیمه سیب زمینی",
+      "date": "14050413"
+    }
+  ]
+}

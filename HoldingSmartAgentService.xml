@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <id>HoldingSmartAgent</id>
+  <name>Holding Smart Agent</name>
+  <description>Holding Smart Agent FastAPI Service</description>
+
+  <executable>D:\serviceAi\.venv\Scripts\python.exe</executable>
+  <arguments>scripts\run_server.py --mode production</arguments>
+  <workingdirectory>D:\serviceAi</workingdirectory>
+
+  <logpath>D:\serviceAi\logs</logpath>
+  <log mode="roll" />
+
+  <startmode>Automatic</startmode>
+</service>

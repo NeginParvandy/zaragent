@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>{{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="status-row">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>سرویس در حال اجرا است</span>
+      </div>
+      <h1 id="page-title">{{ app_name }}</h1>
+      <p>
+        سرویس دستیار هوشمند سازمانی برای یکپارچه‌سازی امن سامانه هلدینگ با خدمات منابع انسانی،
+        تردد و رزرو غذا. عملیات تغییردهنده فقط پس از تأیید صریح کاربر اجرا می‌شوند.
+      </p>
+      <dl class="metadata">
+        <div><dt>نسخه</dt><dd>{{ app_version }}</dd></div>
+        <div><dt>محیط</dt><dd>{{ app_env }}</dd></div>
+        <div><dt>ذخیره‌سازی</dt><dd>SQLite محلی و تراکنشی</dd></div>
+      </dl>
+      <nav class="actions" aria-label="پیوندهای سرویس">
+        <a href="/api/agent/live">وضعیت زنده سرویس</a>
+        {% if docs_enabled %}
+        <a class="secondary" href="/docs">مستندات توسعه API</a>
+        {% endif %}
+      </nav>
+    </section>
+
+    <section class="grid" aria-label="قابلیت‌ها">
+      <article><h2>گزارش روزانه</h2><p>تجمیع هم‌زمان وضعیت غذا، تردد و درخواست‌های پرسنلی بدون فراخوانی تکراری.</p></article>
+      <article><h2>موتور یادآوری</h2><p>یادآوری‌های دارای چرخه عمر، جلوگیری از تکرار و ارتباط تراکنشی با عملیات Pending.</p></article>
+      <article><h2>تأیید امن عملیات</h2><p>اجرای اتمیک و Idempotent برای جلوگیری از ثبت دوباره در درخواست‌های هم‌زمان.</p></article>
+      <article><h2>یکپارچه‌سازی واقعی</h2><p>Connection Pool، Timeout، Retry کنترل‌شده و Circuit Breaker برای سرویس‌های بیرونی.</p></article>
+    </section>
+  </main>
+</body>
+</html>

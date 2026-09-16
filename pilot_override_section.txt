@@ -1,0 +1,155 @@
+69:         return replace(
+70:             value,
+71:             **changes,
+72:         )
+73: 
+74:     for key, item in changes.items():
+75:         setattr(
+76:             value,
+77:             key,
+78:             item,
+79:         )
+80: 
+81:     return value
+82: 
+83: 
+84: def _apply_pilot_hr_override(context):
+85:     try:
+86:         config = json.loads(
+87:             _PILOT_HR_OVERRIDE_PATH.read_text(
+88:                 encoding="utf-8"
+89:             )
+90:         )
+91:     except FileNotFoundError:
+92:         return context
+93:     except Exception:
+94:         logger.exception(
+95:             "PILOT_HR_OVERRIDE_INVALID_FILE"
+96:         )
+97:         return context
+98: 
+99:     if config.get("enabled") is not True:
+100:         return context
+101: 
+102:     configured_employee_id = str(
+103:         config.get(
+104:             "employeeId",
+105:             "",
+106:         )
+107:     ).strip()
+108: 
+109:     current_employee_id = str(
+110:         context.employee_id or ""
+111:     ).strip()
+112: 
+113:     if (
+114:         not configured_employee_id
+115:         or configured_employee_id
+116:         != current_employee_id
+117:     ):
+118:         return context
+119: 
+120:     authorization_token = str(
+121:         config.get(
+122:             "authorizationToken",
+123:             "",
+124:         )
+125:     ).strip()
+126: 
+127:     username_hash = str(
+128:         config.get(
+129:             "usernameHash",
+130:             "",
+131:         )
+132:     ).strip()
+133: 
+134:     password_hash = str(
+135:         config.get(
+136:             "passwordHash",
+137:             "",
+138:         )
+139:     ).strip()
+140: 
+141:     digit_code = config.get(
+142:         "digitCode"
+143:     )
+144: 
+145:     if not all(
+146:         (
+147:             authorization_token,
+148:             username_hash,
+149:             password_hash,
+150:             digit_code is not None,
+151:         )
+152:     ):
+153:         logger.error(
+154:             (
+155:                 "PILOT_HR_OVERRIDE_SKIPPED "
+156:                 "employee_id=%s reason=incomplete_config"
+157:             ),
+158:             current_employee_id,
+159:         )
+160:         return context
+161: 
+162:     session = context.session
+163: 
+164:     if session is None:
+165:         logger.error(
+166:             (
+167:                 "PILOT_HR_OVERRIDE_SKIPPED "
+168:                 "employee_id=%s reason=no_session"
+169:             ),
+170:             current_employee_id,
+171:         )
+172:         return context
+173: 
+174:     updated_session = _copy_with_update(
+175:         session,
+176:         {
+177:             "authorization_token": authorization_token,
+178:             "username_hash": username_hash,
+179:             "password_hash": password_hash,
+180:             "digit_code": int(digit_code),
+181:         },
+182:     )
+183: 
+184:     updated_context = _copy_with_update(
+185:         context,
+186:         {
+187:             "session": updated_session,
+188:         },
+189:     )
+190: 
+191:     logger.warning(
+192:         (
+193:             "PILOT_HR_OVERRIDE_APPLIED "
+194:             "employee_id=%s"
+195:         ),
+196:         current_employee_id,
+197:     )
+198: 
+199:     return updated_context
+200: 
+201: 
+202: router = APIRouter(
+203:     prefix="/api/agent",
+204:     tags=["Agent"],
+205: )
+206: 
+207: 
+208: def _fallback_conversation_id(
+209:     context: AgentContext,
+210:     identity: GatewayIdentity,
+211: ) -> str | None:
+212:     """
+213:     Build a stable conversation id for legacy callers that do not
+214:     send conversationId (for example the current .NET bridge).
+215: 
+216:     The raw token is never stored. Only a short SHA-256 digest is
+217:     used, so two requests from the same login session share state
+218:     while different sessions stay isolated.
+219:     """
+220:     employee_id = str(context.employee_id or "").strip()
+221:     if employee_id == "05000602":
+222:         return "pilot-05000602"
+223: 

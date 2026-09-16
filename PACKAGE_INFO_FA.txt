@@ -1,0 +1,8 @@
+Holding Smart Agent 2.4.6 - Offline Server Release
+
+سیستم هدف: Windows Server 64-bit
+Python هدف: 3.13 x64
+نصب وابستگی‌ها: کاملا آفلاین از wheelhouse
+Swagger: کاملا محلی در /swagger
+پورت پیش فرض: 13657
+فایل تنظیمات واقعی .env داخل بسته نیست.

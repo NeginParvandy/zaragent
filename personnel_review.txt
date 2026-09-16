@@ -1,0 +1,313 @@
+﻿================ personnel_client.py ================
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Any
+
+from app.core.config import Settings
+from app.core.exceptions import MissingConfigurationError
+from app.core.security import secret_value
+from app.domain.models import AgentContext
+from app.infrastructure.clients.base_client import ExternalApiClient
+
+
+class PersonnelClient(ExternalApiClient):
+    def __init__(self, settings: Settings):
+        super().__init__(settings, base_url=settings.hr_api_base_url, service_name="HR")
+
+    def _hr_credentials(self, context: AgentContext | None) -> tuple[str, str, int]:
+        session = self._session(context)
+        username = secret_value(session.username_hash) or self.settings.default_username_hash.get_secret_value()
+        password = secret_value(session.password_hash) or self.settings.default_password_hash.get_secret_value()
+        digit = session.digit_code if session.digit_code is not None else self.settings.default_digit_code
+        missing: list[str] = []
+        if not username:
+            missing.append("usernameHash")
+        if not password:
+            missing.append("passwordHash")
+        if digit is None:
+            missing.append("digitCode")
+        if missing or digit is None:
+            raise MissingConfigurationError("اطلاعات احراز هویت HR کامل نیست.", details={"missing": missing})
+        return username, password, int(digit)
+
+    def _query_auth(self, context: AgentContext) -> dict[str, Any]:
+        username, password, digit = self._hr_credentials(context)
+        return {"UsernameHash": username, "PasswordHash": password, "digitCode": digit}
+
+    def _json_auth(self, context: AgentContext) -> dict[str, Any]:
+        username, password, digit = self._hr_credentials(context)
+        return {"usernameHash": username, "passwordHash": password, "digitCode": digit}
+
+    def _form_auth(self, context: AgentContext) -> dict[str, Any]:
+        username, password, digit = self._hr_credentials(context)
+        return {"UsernameHash": username, "PasswordHash": password, "DigitCode": digit}
+
+    async def get(self, route: str, context: AgentContext, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        final_params = {**(params or {}), **self._query_auth(context)}
+        return await self.request("GET", f"/api/v{{version}}/Personnel/{route}", context=context, params=final_params)
+
+    async def post_json(
+        self, route: str, context: AgentContext, payload: dict[str, Any], *, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
+        body = {**payload, **self._json_auth(context)}
+        return await self.request(
+            "POST",
+            f"/api/v{{version}}/Personnel/{route}",
+            context=context,
+            json=body,
+            headers={"Content-Type": "application/json"},
+            idempotency_key=idempotency_key,
+        )
+
+    async def post_form(
+        self,
+        route: str,
+        context: AgentContext,
+        data: dict[str, Any],
+        files: Iterable[tuple[str, tuple[str, bytes, str]]] | None = None,
+        *,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        body = {**data, **self._form_auth(context)}
+        return await self.request(
+            "POST",
+            f"/api/v{{version}}/Personnel/{route}",
+            context=context,
+            data=body,
+            files=list(files or []),
+            idempotency_key=idempotency_key,
+        )
+
+================ PERSONNEL CLIENT USAGES ================
+D:\serviceAi\app\api\dependencies.py:14:employee_id: str | None
+D:\serviceAi\app\api\dependencies.py:30:return GatewayIdentity(employee_id=None, scope=x_agent_scope or "user", authenticated=False)
+D:\serviceAi\app\api\dependencies.py:32:x_employee_id = request.headers.get(settings.trusted_gateway_header)
+D:\serviceAi\app\api\dependencies.py:35:if not x_employee_id:
+D:\serviceAi\app\api\dependencies.py:37:return GatewayIdentity(employee_id=x_employee_id.strip(), scope=x_agent_scope or "user", authenticated=True)
+D:\serviceAi\app\api\dependencies.py:48:return GatewayIdentity(employee_id=None, scope="admin", authenticated=True)
+D:\serviceAi\app\api\routes\agent.py:222:employee_id = (
+D:\serviceAi\app\api\routes\agent.py:229:employee_id
+D:\serviceAi\app\application\container.py:17:from app.infrastructure.clients.personnel_client import PersonnelClient
+D:\serviceAi\app\application\container.py:35:self.personnel_client = PersonnelClient(
+D:\serviceAi\app\application\container.py:43:self.personnel_client
+D:\serviceAi\app\application\container.py:80:self.personnel_client.start(),
+D:\serviceAi\app\application\container.py:107:self.personnel_client.close(),
+D:\serviceAi\app\application\services\action_service.py:53:employee_id: str,
+D:\serviceAi\app\application\services\action_service.py:64:employee_id=employee_id,
+D:\serviceAi\app\application\services\action_service.py:75:f"{employee_id}:{action_id}:{action_type}".encode()
+D:\serviceAi\app\application\services\action_service.py:82:employee_id: str,
+D:\serviceAi\app\application\services\action_service.py:92:employee_id,
+D:\serviceAi\app\application\services\action_service.py:99:f"{employee_id}:{action_type}:"
+D:\serviceAi\app\application\services\action_service.py:125:employee_id = str(
+D:\serviceAi\app\application\services\action_service.py:126:context.employee_id or ""
+D:\serviceAi\app\application\services\action_service.py:132:employee_id,
+D:\serviceAi\app\application\services\action_service.py:147:employee_id = str(
+D:\serviceAi\app\application\services\action_service.py:148:context.employee_id or ""
+D:\serviceAi\app\application\services\action_service.py:154:employee_id,
+D:\serviceAi\app\application\services\action_service.py:161:employee_id or None,
+D:\serviceAi\app\application\services\action_service.py:306:employee_id,
+D:\serviceAi\app\application\services\action_service.py:346:employee_id = str(
+D:\serviceAi\app\application\services\action_service.py:347:context.employee_id or ""
+D:\serviceAi\app\application\services\action_service.py:350:if not employee_id:
+D:\serviceAi\app\application\services\action_service.py:353:code="MISSING_EMPLOYEE_ID",
+D:\serviceAi\app\application\services\action_service.py:359:employee_id,
+D:\serviceAi\app\application\services\action_service.py:371:employee_id,
+D:\serviceAi\app\application\services\action_service.py:392:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:211:employee_id = str(
+D:\serviceAi\app\application\services\chat_service.py:212:context.employee_id or ""
+D:\serviceAi\app\application\services\chat_service.py:215:if not employee_id:
+D:\serviceAi\app\application\services\chat_service.py:218:code="MISSING_EMPLOYEE_ID",
+D:\serviceAi\app\application\services\chat_service.py:223:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:399:employee_id = str(
+D:\serviceAi\app\application\services\chat_service.py:400:context.employee_id or ""
+D:\serviceAi\app\application\services\chat_service.py:403:if not employee_id:
+D:\serviceAi\app\application\services\chat_service.py:408:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:422:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:432:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:447:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:454:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:476:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:487:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:576:employee_id = str(
+D:\serviceAi\app\application\services\chat_service.py:577:context.employee_id or ""
+D:\serviceAi\app\application\services\chat_service.py:580:if not employee_id:
+D:\serviceAi\app\application\services\chat_service.py:583:code="MISSING_EMPLOYEE_ID",
+D:\serviceAi\app\application\services\chat_service.py:614:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:638:employee_id,
+D:\serviceAi\app\application\services\chat_service.py:1273:str(context.employee_id),
+D:\serviceAi\app\application\services\chat_service.py:1336:str(context.employee_id),
+D:\serviceAi\app\application\services\chat_service.py:1460:str(context.employee_id),
+D:\serviceAi\app\application\services\chat_service.py:1613:str(context.employee_id),
+D:\serviceAi\app\application\services\chat_service.py:1775:str(context.employee_id),
+D:\serviceAi\app\application\services\chat_service.py:1914:str(context.employee_id),
+D:\serviceAi\app\application\services\context_resolver.py:17:trusted_employee = identity.employee_id if identity else None
+D:\serviceAi\app\application\services\context_resolver.py:19:if ctx.employee_id and str(ctx.employee_id) != str(trusted_employee):
+D:\serviceAi\app\application\services\context_resolver.py:21:ctx.employee_id = trusted_employee
+D:\serviceAi\app\application\services\context_resolver.py:22:elif not ctx.employee_id and not self.settings.auth_required and self.settings.default_employee_id:
+D:\serviceAi\app\application\services\context_resolver.py:23:ctx.employee_id = self.settings.default_employee_id
+D:\serviceAi\app\application\services\context_resolver.py:34:employee = context.employee_id
+D:\serviceAi\app\application\services\context_resolver.py:36:raise MissingConfigurationError("کد پرسنلی کاربر مشخص نیست.", details={"field": "employeeId"})
+D:\serviceAi\app\application\services\food_service.py:80:def _mask_employee_id(
+D:\serviceAi\app\application\services\food_service.py:81:employee_id: str | None,
+D:\serviceAi\app\application\services\food_service.py:83:value = str(employee_id or "").strip()
+D:\serviceAi\app\application\services\food_service.py:352:"employeeIdMasked": _mask_employee_id(
+D:\serviceAi\app\application\services\food_service.py:353:context.employee_id
+D:\serviceAi\app\application\services\hr_service.py:17:from app.infrastructure.clients.personnel_client import PersonnelClient
+D:\serviceAi\app\application\services\hr_service.py:21:def __init__(self, client: PersonnelClient):
+D:\serviceAi\app\application\services\hr_service.py:26:return await self.client.get("GetTimeAccount", context, {"EmployeeID": context.employee_id, "Date": start})
+D:\serviceAi\app\application\services\hr_service.py:29:return await self.client.get("GetLeaveType", context, {"EmployeeID": context.employee_id})
+D:\serviceAi\app\application\services\hr_service.py:35:{"AbsenceTypeCode": absence_type_code, "EmployeeID": context.employee_id, "InfoType": info_type},
+D:\serviceAi\app\application\services\hr_service.py:50:"EmployeeID": context.employee_id,
+D:\serviceAi\app\application\services\hr_service.py:64:return await self.client.get("GetLeaveRequest", context, {"EmployeeID": context.employee_id, "StartDate": start_date})
+D:\serviceAi\app\application\services\hr_service.py:72:{"EmployeeID": context.employee_id, "RequestID": request_id, "ChangeStateID": change_state_id, "LeaveKey": leave_key},
+D:\serviceAi\app\application\services\hr_service.py:89:{"employeeID": context.employee_id, "requestID": request_id, "changeStateID": change_state_id, "leaveKey": leave_key},
+D:\serviceAi\app\application\services\hr_service.py:131:"EmployeeID": context.employee_id,
+D:\serviceAi\app\application\services\hr_service.py:145:return await self.client.get("GetTimeEvent", context, {"EmployeeID": context.employee_id, "Begda": begda, "Endda": endda})
+D:\serviceAi\app\application\services\hr_service.py:161:{"employeeID": context.employee_id, "eventDate": event_date, "eventTime": event_time, "note": note or ""},
+D:\serviceAi\app\application\services\hr_service.py:250:"Pernr": row.get("pernr") or row.get("Pernr") or row.get("employeeID") or row.get("approverEmployeeID") or "",
+D:\serviceAi\app\application\services\reminder_service.py:53:employee_id = str(
+D:\serviceAi\app\application\services\reminder_service.py:54:context.employee_id or ""
+D:\serviceAi\app\application\services\reminder_service.py:65:if not date or not employee_id:
+D:\serviceAi\app\application\services\reminder_service.py:70:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:104:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:110:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:120:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:148:employee_id = str(
+D:\serviceAi\app\application\services\reminder_service.py:149:context.employee_id or ""
+D:\serviceAi\app\application\services\reminder_service.py:160:if not date or not employee_id:
+D:\serviceAi\app\application\services\reminder_service.py:165:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:199:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:205:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:215:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:239:employee_id: str,
+D:\serviceAi\app\application\services\reminder_service.py:244:employee_id,
+D:\serviceAi\app\application\services\reminder_service.py:398:employee_id=str(
+D:\serviceAi\app\application\services\reminder_service.py:399:context.employee_id
+D:\serviceAi\app\application\services\reminder_service.py:411:employee_id=str(context.employee_id),
+D:\serviceAi\app\application\services\reminder_service.py:471:employee_id=str(
+D:\serviceAi\app\application\services\reminder_service.py:472:context.employee_id
+D:\serviceAi\app\application\services\reminder_service.py:518:employee_id=str(
+D:\serviceAi\app\application\services\reminder_service.py:519:context.employee_id
+D:\serviceAi\app\application\services\reminder_service.py:588:employee_id=str(
+D:\serviceAi\app\application\services\reminder_service.py:589:context.employee_id
+D:\serviceAi\app\application\services\reminder_service.py:639:employee_id=str(
+D:\serviceAi\app\application\services\reminder_service.py:640:context.employee_id
+D:\serviceAi\app\core\config.py:55:default_employee_id: str = Field(default="", alias="DEFAULT_EMPLOYEE_ID")
+D:\serviceAi\app\domain\models.py:148:employee_id: str | None = Field(
+D:\serviceAi\app\domain\models.py:151:"employeeId",
+D:\serviceAi\app\domain\models.py:152:"EmployeeID",
+D:\serviceAi\app\domain\models.py:153:"employeeID",
+D:\serviceAi\app\domain\models.py:198:"employee_id",
+D:\serviceAi\app\domain\models.py:237:employee_id: str | None = Field(
+D:\serviceAi\app\domain\models.py:240:"employeeId",
+D:\serviceAi\app\domain\models.py:241:"EmployeeID",
+D:\serviceAi\app\domain\models.py:242:"employeeID",
+D:\serviceAi\app\domain\models.py:249:"employee_id",
+D:\serviceAi\app\domain\models.py:253:def strip_employee_id(
+D:\serviceAi\app\domain\models.py:268:"employee_id": self.employee_id,
+D:\serviceAi\app\domain\models.py:319:"employee_id": self.employee_id,
+D:\serviceAi\app\domain\models.py:341:employee_id=self.employee_id,
+D:\serviceAi\app\domain\models.py:552:Cancel فقط actionId و employeeId نیاز دارد.
+D:\serviceAi\app\domain\models.py:560:Status فقط actionId و employeeId نیاز دارد.
+D:\serviceAi\app\domain\models.py:568:employee_id: str
+D:\serviceAi\app\domain\models.py:581:employee_id: str
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:147:employee_id: str | None = Field(
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:150:"employeeId",
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:151:"EmployeeID",
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:152:"employeeID",
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:197:"employee_id",
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:236:employee_id: str | None = Field(
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:239:"employeeId",
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:240:"EmployeeID",
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:241:"employeeID",
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:248:"employee_id",
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:252:def strip_employee_id(
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:267:"employee_id": self.employee_id,
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:318:"employee_id": self.employee_id,
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:340:employee_id=self.employee_id,
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:434:Cancel فقط actionId و employeeId نیاز دارد.
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:442:Status فقط actionId و employeeId نیاز دارد.
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:450:employee_id: str
+D:\serviceAi\app\domain\models_before_legacy_chat_fix.py:463:employee_id: str
+D:\serviceAi\app\infrastructure\clients\base_client.py:36:def _employee_id(self, context: AgentContext | None) -> str:
+D:\serviceAi\app\infrastructure\clients\base_client.py:37:employee_id = (context.employee_id if context else None) or self.settings.default_employee_id
+D:\serviceAi\app\infrastructure\clients\base_client.py:38:if not employee_id:
+D:\serviceAi\app\infrastructure\clients\base_client.py:39:raise MissingConfigurationError("کد پرسنلی کاربر به Agent ارسال نشده است.", details={"field": "employeeId"})
+D:\serviceAi\app\infrastructure\clients\base_client.py:40:return str(employee_id)
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:13:class PersonnelClient(ExternalApiClient):
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:64:employee_id TEXT NOT NULL,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:77:CREATE INDEX IF NOT EXISTS idx_pending_actions_employee_status ON pending_actions(employee_id, status);
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:81:employee_id TEXT NOT NULL,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:97:CREATE INDEX IF NOT EXISTS idx_reminders_employee_status ON reminders(employee_id, status);
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:98:CREATE INDEX IF NOT EXISTS idx_reminders_dedup_created ON reminders(employee_id, dedup_key, created_at);
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:101:employee_id TEXT PRIMARY KEY,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:110:employee_id TEXT NOT NULL,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:114:PRIMARY KEY(employee_id, target_date)
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:135:conn.execute("CREATE INDEX IF NOT EXISTS idx_pending_actions_dedup ON pending_actions(employee_id, dedup_key, status)")
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:154:"WHERE employee_id=? AND dedup_key=? "
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:158:(record.employee_id, dedup_key, _dt_to_text(_now())),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:171:id, employee_id, action_type, payload, status, created_at, updated_at, expires_at,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:177:record.employee_id,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:190:def get_pending_action(self, action_id: str, employee_id: str | None = None) -> PendingActionRecord | None:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:193:if employee_id:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:194:sql += " AND employee_id=?"
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:195:params.append(employee_id)
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:202:employee_id: str,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:204:safe_employee_id = str(
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:205:employee_id or ""
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:208:if not safe_employee_id:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:224:employee_id=?
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:231:safe_employee_id,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:241:employee_id=?
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:253:safe_employee_id,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:266:def get_action_state(self, action_id: str, employee_id: str) -> dict[str, Any] | None:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:269:"SELECT id, employee_id, action_type, status, created_at, updated_at, expires_at, result, error_message "
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:270:"FROM pending_actions WHERE id=? AND employee_id=?",
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:271:(action_id, employee_id),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:292:def claim_pending_action(self, action_id: str, employee_id: str) -> PendingActionRecord | None:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:296:row = conn.execute("SELECT * FROM pending_actions WHERE id=? AND employee_id=?", (action_id, employee_id)).fetchone()
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:312:"UPDATE pending_actions SET status='processing', updated_at=? WHERE id=? AND employee_id=? AND status='pending'",
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:313:(_dt_to_text(now), action_id, employee_id),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:351:def cancel_pending_action(self, action_id: str, employee_id: str) -> bool:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:355:"SELECT reminder_id FROM pending_actions WHERE id=? AND employee_id=? AND status=?", (action_id, employee_id, "pending")
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:374:employee_id: str,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:379:safe_employee_id = str(employee_id).strip()
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:381:if not safe_employee_id:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:382:raise ValueError("employee_id is required")
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:394:INSERT INTO chat_states(employee_id, state_type, payload, created_at, expires_at)
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:396:ON CONFLICT(employee_id) DO UPDATE SET
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:403:safe_employee_id,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:413:"employeeId": safe_employee_id,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:420:def get_chat_state(self, employee_id: str) -> dict[str, Any] | None:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:421:safe_employee_id = str(employee_id).strip()
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:422:if not safe_employee_id:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:429:SELECT employee_id, state_type, payload, created_at, expires_at
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:431:WHERE employee_id=?
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:433:(safe_employee_id,),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:440:conn.execute("DELETE FROM chat_states WHERE employee_id=?", (safe_employee_id,))
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:449:"employeeId": row["employee_id"],
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:456:def delete_chat_state(self, employee_id: str) -> bool:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:457:safe_employee_id = str(employee_id).strip()
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:458:if not safe_employee_id:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:463:result = conn.execute("DELETE FROM chat_states WHERE employee_id=?", (safe_employee_id,))
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:470:employee_id: str,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:478:WHERE employee_id=? AND target_date=?
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:482:str(employee_id),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:491:employee_id: str,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:503:employee_id,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:510:str(employee_id),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:528:employee_id=?
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:534:str(employee_id),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:544:employee_id: str,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:553:employee_id=?
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:559:str(employee_id),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:581:"SELECT id FROM reminders WHERE employee_id=? AND dedup_key=? AND created_at>=? LIMIT 1",
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:582:(record.employee_id, dedup_key, _dt_to_text(cutoff)),
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:592:id, employee_id, module, reminder_type, target_date, title, message, severity,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:598:record.employee_id,
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:618:def list_reminders(self, employee_id: str, status: str | None = None) -> list[ReminderRecord]:
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:619:sql = "SELECT * FROM reminders WHERE employee_id=?"
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:620:params: list[Any] = [employee_id]
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:709:employee_id=row["employee_id"],
+D:\serviceAi\app\infrastructure\repositories\state_repository.py:723:employee_id=row["employee_id"],

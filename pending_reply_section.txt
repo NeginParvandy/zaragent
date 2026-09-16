@@ -1,0 +1,205 @@
+621:             ),
+622:             "requiresConfirmation": False,
+623:             "suggestions": self._suggestions(),
+624:         }
+625: 
+626:     async def _handle_pending_action_reply(
+627:         self,
+628:         context: AgentContext,
+629:         text: str,
+630:         conversation_payload: dict[str, Any],
+631:     ) -> dict[str, Any] | None:
+632:         reply_kind = (
+633:             self._pending_action_reply_kind(
+634:                 text
+635:             )
+636:         )
+637: 
+638:         if reply_kind is None:
+639:             return None
+640: 
+641:         employee_id = str(
+642:             context.employee_id or ""
+643:         ).strip()
+644: 
+645:         if not employee_id:
+646:             raise AppError(
+647:                 "کد پرسنلی کاربر مشخص نیست.",
+648:                 code="MISSING_EMPLOYEE_ID",
+649:             )
+650: 
+651:         pending_action = None
+652:         pending_action_id = str(
+653:             conversation_payload.get(
+654:                 "pendingActionId"
+655:             )
+656:             or ""
+657:         ).strip()
+658: 
+659:         if pending_action_id:
+660:             pending_action = (
+661:                 await asyncio.to_thread(
+662:                     self.repository.get_pending_action,
+663:                     pending_action_id,
+664:                     employee_id,
+665:                 )
+666:             )
+667: 
+668:             if (
+669:                 pending_action is not None
+670:                 and pending_action.status
+671:                 != "pending"
+672:             ):
+673:                 pending_action = None
+674: 
+675:         if (
+676:             pending_action is None
+677:             and not str(
+678:                 context.conversation_id or ""
+679:             ).strip()
+680:         ):
+681:             pending_action = (
+682:                 await asyncio.to_thread(
+683:                     self.repository
+684:                     .get_latest_pending_action,
+685:                     employee_id,
+686:                 )
+687:             )
+688: 
+689:         if reply_kind == "confirm":
+690:             if pending_action is None:
+691:                 return {
+692:                     "reply": (
+693:                         "در این مکالمه عملیاتی "
+694:                         "در انتظار تأیید نیست."
+695:                     ),
+696:                     "requiresConfirmation": False,
+697:                     "data": {
+698:                         "pendingAction": None,
+699:                     },
+700:                 }
+701: 
+702:             result = await self.actions.confirm(
+703:                 context,
+704:                 pending_action.id,
+705:             )
+706: 
+707:             await self._delete_conversation_state(
+708:                 context
+709:             )
+710: 
+711:             return {
+712:                 "reply": self._action_success_reply(
+713:                     pending_action.action_type
+714:                 ),
+715:                 "requiresConfirmation": False,
+716:                 "action": {
+717:                     "id": pending_action.id,
+718:                     "type": (
+719:                         pending_action.action_type
+720:                     ),
+721:                     "status": (
+722:                         result.get("status")
+723:                         or "succeeded"
+724:                     ),
+725:                 },
+726:                 "data": result.get(
+727:                     "result",
+728:                     result,
+729:                 ),
+730:             }
+731: 
+732:         if reply_kind == "reject":
+733:             if pending_action is not None:
+734:                 await self.actions.cancel(
+735:                     context,
+736:                     pending_action.id,
+737:                 )
+738: 
+739:             if not conversation_payload:
+740:                 return {
+741:                     "reply": (
+742:                         "پیشنهاد فعالی برای رد کردن "
+743:                         "در این مکالمه وجود ندارد."
+744:                     ),
+745:                     "requiresConfirmation": False,
+746:                 }
+747: 
+748:             updated_payload = dict(
+749:                 conversation_payload
+750:             )
+751:             updated_payload.pop(
+752:                 "pendingActionId",
+753:                 None,
+754:             )
+755:             proposal = (
+756:                 updated_payload.get("proposal")
+757:                 if isinstance(
+758:                     updated_payload.get(
+759:                         "proposal"
+760:                     ),
+761:                     dict,
+762:                 )
+763:                 else {}
+764:             )
+765:             updated_payload[
+766:                 "proposalRejected"
+767:             ] = True
+768: 
+769:             nlu_state = (
+770:                 dict(
+771:                     updated_payload.get(
+772:                         "nluState"
+773:                     )
+774:                     or {}
+775:                 )
+776:             )
+777:             nlu_state[
+778:                 "proposalRejected"
+779:             ] = True
+780:             nlu_state[
+781:                 "missingFields"
+782:             ] = ["alternative"]
+783:             updated_payload[
+784:                 "nluState"
+785:             ] = nlu_state
+786: 
+787:             await self._save_conversation_payload(
+788:                 context,
+789:                 updated_payload,
+790:             )
+791: 
+792:             return {
+793:                 "reply": self._rejected_proposal_reply(
+794:                     proposal,
+795:                     updated_payload,
+796:                 ),
+797:                 "requiresConfirmation": False,
+798:                 "data": {
+799:                     "proposalRejected": True,
+800:                 },
+801:             }
+802: 
+803:         if pending_action is not None:
+804:             result = await self.actions.cancel(
+805:                 context,
+806:                 pending_action.id,
+807:             )
+808:             message = (
+809:                 result.get("message")
+810:                 or "عملیات لغو شد."
+811:             )
+812:         else:
+813:             message = (
+814:                 "فرایند فعال این مکالمه لغو شد."
+815:             )
+816: 
+817:         await self._delete_conversation_state(
+818:             context
+819:         )
+820: 
+821:         return {
+822:             "reply": message,
+823:             "requiresConfirmation": False,
+824:             "data": {
+825:                 "conversationCancelled": True,

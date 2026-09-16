@@ -1,0 +1,2146 @@
+
+=== CHAT_PENDING_ACTION #1 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: pendingActionId
+192:                 nlu_result,
+193:             )
+194:         )
+195: 
+196:         if nlu_result.get(
+197:             "needsClarification"
+198:         ):
+199:             updated_payload = dict(
+200:                 conversation_payload
+201:             )
+202:             updated_payload.update(
+203:                 {
+204:                     "nluState": (
+205:                         nlu_result.get("state")
+206:                         or {}
+207:                     ),
+208:                     "originalMessage": (
+209:                         combined_text
+210:                     ),
+211:                     "lastDomain": (
+212:                         nlu_result.get("domain")
+213:                     ),
+214:                 }
+215:             )
+216:             updated_payload.pop(
+217:                 "pendingActionId",
+218:                 None,
+219:             )
+220:             updated_payload.pop(
+221:                 "proposal",
+222:                 None,
+223:             )
+224: 
+225:             await self._save_conversation_payload(
+226:                 context,
+227:                 updated_payload,
+228:             )
+229: 
+230:             return {
+231:                 "reply": (
+232:                     nlu_result.get(
+233:                         "clarification"
+234:                     )
+235:                     or (
+236:                         "لطفاً جزئیات بیشتری "
+237:                         "بفرمایید."
+238:                     )
+239:                 ),
+240:                 "requiresConfirmation": False,
+241:                 "data": {
+242:                     "domain": (
+243:                         nlu_result.get("domain")
+244:                     ),
+245:                     "intent": (
+246:                         nlu_result.get("intent")
+247:                     ),
+248:                     "missingFields": (
+249:                         nlu_result.get(
+250:                             "missingFields"
+251:                         )
+252:                         or []
+253:                     ),
+254:                 },
+255:             }
+256: 
+257:         entities = (
+258:             nlu_result.get("entities")
+259:             if isinstance(
+260:                 nlu_result.get("entities"),
+261:                 dict,
+262:             )
+263:             else {}
+264:         )
+265: 
+266:         dates = self._dates_from_entities(
+267:             entities
+268:         )
+269:         times = self._times_from_entities(
+270:             entities
+271:         )
+272: 
+273:         intent = str(
+274:             nlu_result.get("intent")
+275:             or ""
+276:         )
+277:         domain = str(
+278:             nlu_result.get("domain")
+279:             or ""
+280:         )
+281: 
+282:         try:
+283:             if intent in {
+284:                 "SHOW_FOOD_MENU",
+285:                 "SHOW_FOOD_RESERVATION",
+286:                 "RESERVE_FOOD",
+287:                 "CANCEL_FOOD",
+288:                 "FOOD_UNKNOWN",
+289:             } or (
+290:                 domain == "FOOD"
+291:                 and self._is_food(text)
+292:             ):
+293:                 response = await self._handle_food(
+294:                     context,
+295:                     combined_text,
+296:                     dates,
+
+=== CHAT_PENDING_ACTION #2 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: pendingActionId
+731:         text: str,
+732:         conversation_payload: dict[str, Any],
+733:     ) -> dict[str, Any] | None:
+734:         reply_kind = (
+735:             self._pending_action_reply_kind(
+736:                 text
+737:             )
+738:         )
+739: 
+740:         if reply_kind is None:
+741:             return None
+742: 
+743:         employee_id = str(
+744:             context.employee_id or ""
+745:         ).strip()
+746: 
+747:         if not employee_id:
+748:             raise AppError(
+749:                 "کد پرسنلی کاربر مشخص نیست.",
+750:                 code="MISSING_EMPLOYEE_ID",
+751:             )
+752: 
+753:         pending_action = None
+754:         pending_action_id = str(
+755:             conversation_payload.get(
+756:                 "pendingActionId"
+757:             )
+758:             or ""
+759:         ).strip()
+760: 
+761:         if pending_action_id:
+762:             pending_action = (
+763:                 await asyncio.to_thread(
+764:                     self.repository.get_pending_action,
+765:                     pending_action_id,
+766:                     employee_id,
+767:                 )
+768:             )
+769: 
+770:             if (
+771:                 pending_action is not None
+772:                 and pending_action.status
+773:                 != "pending"
+774:             ):
+775:                 pending_action = None
+776: 
+777:         if (
+778:             pending_action is None
+779:             and not str(
+780:                 context.conversation_id or ""
+781:             ).strip()
+782:         ):
+783:             pending_action = (
+784:                 await asyncio.to_thread(
+785:                     self.repository
+786:                     .get_latest_pending_action,
+787:                     employee_id,
+788:                 )
+789:             )
+790: 
+791:         if reply_kind == "confirm":
+792:             if pending_action is None:
+793:                 replay_response = (
+794:                     self._confirmation_replay_response(
+795:                         conversation_payload
+796:                     )
+797:                 )
+798: 
+799:                 if (
+800:                     replay_response is None
+801:                     and pending_action_id
+802:                 ):
+803:                     replay_response = (
+804:                         await self
+805:                         ._wait_for_confirmation_replay(
+806:                             context
+807:                         )
+808:                     )
+809: 
+810:                 if replay_response is not None:
+811:                     return replay_response
+812: 
+813:                 return {
+814:                     "reply": (
+815:                         "در این مکالمه عملیاتی "
+816:                         "در انتظار تأیید نیست."
+817:                     ),
+818:                     "requiresConfirmation": False,
+819:                     "data": {
+820:                         "pendingAction": None,
+821:                     },
+822:                 }
+823: 
+824:             try:
+825:                 result = await self.actions.confirm(
+826:                     context,
+827:                     pending_action.id,
+828:                 )
+829:             except AppError as exc:
+830:                 details = (
+831:                     getattr(exc, "details", None)
+832:                     or {}
+833:                 )
+834: 
+835:                 current_status = str(
+
+=== CHAT_PENDING_ACTION #3 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: pendingActionId
+908:                     "status": success_status,
+909:                 },
+910:                 "data": success_data,
+911:             }
+912: 
+913:         if reply_kind == "reject":
+914:             if pending_action is not None:
+915:                 await self.actions.cancel(
+916:                     context,
+917:                     pending_action.id,
+918:                 )
+919: 
+920:             if not conversation_payload:
+921:                 return {
+922:                     "reply": (
+923:                         "پیشنهاد فعالی برای رد کردن "
+924:                         "در این مکالمه وجود ندارد."
+925:                     ),
+926:                     "requiresConfirmation": False,
+927:                 }
+928: 
+929:             updated_payload = dict(
+930:                 conversation_payload
+931:             )
+932:             updated_payload.pop(
+933:                 "pendingActionId",
+934:                 None,
+935:             )
+936:             proposal = (
+937:                 updated_payload.get("proposal")
+938:                 if isinstance(
+939:                     updated_payload.get(
+940:                         "proposal"
+941:                     ),
+942:                     dict,
+943:                 )
+944:                 else {}
+945:             )
+946:             updated_payload[
+947:                 "proposalRejected"
+948:             ] = True
+949: 
+950:             nlu_state = (
+951:                 dict(
+952:                     updated_payload.get(
+953:                         "nluState"
+954:                     )
+955:                     or {}
+956:                 )
+957:             )
+958:             nlu_state[
+959:                 "proposalRejected"
+960:             ] = True
+961:             nlu_state[
+962:                 "missingFields"
+963:             ] = ["alternative"]
+964:             updated_payload[
+965:                 "nluState"
+966:             ] = nlu_state
+967: 
+968:             await self._save_conversation_payload(
+969:                 context,
+970:                 updated_payload,
+971:             )
+972: 
+973:             return {
+974:                 "reply": self._rejected_proposal_reply(
+975:                     proposal,
+976:                     updated_payload,
+977:                 ),
+978:                 "requiresConfirmation": False,
+979:                 "data": {
+980:                     "proposalRejected": True,
+981:                 },
+982:             }
+983: 
+984:         if pending_action is not None:
+985:             result = await self.actions.cancel(
+986:                 context,
+987:                 pending_action.id,
+988:             )
+989:             message = (
+990:                 result.get("message")
+991:                 or "عملیات لغو شد."
+992:             )
+993:         else:
+994:             message = (
+995:                 "فرایند فعال این مکالمه لغو شد."
+996:             )
+997: 
+998:         await self._delete_conversation_state(
+999:             context
+1000:         )
+1001: 
+1002:         return {
+1003:             "reply": message,
+1004:             "requiresConfirmation": False,
+1005:             "data": {
+1006:                 "conversationCancelled": True,
+1007:             },
+1008:         }
+1009: 
+1010:     async def _load_conversation_payload(
+1011:         self,
+1012:         context: AgentContext,
+
+=== CHAT_PENDING_ACTION #4 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: pendingActionId
+1470:         )
+1471: 
+1472:         if (
+1473:             previous_text
+1474:             and previous_domain
+1475:             and previous_domain
+1476:             == current_domain
+1477:             and previous_intent
+1478:             == current_intent
+1479:             and not is_explicit_new_request
+1480:         ):
+1481:             return (
+1482:                 f"{previous_text} {text}"
+1483:             ).strip()
+1484: 
+1485:         return text
+1486: 
+1487:     async def _cancel_pending_on_domain_switch(
+1488:         self,
+1489:         context: AgentContext,
+1490:         conversation_payload: dict[str, Any],
+1491:         nlu_result: dict[str, Any],
+1492:     ) -> None:
+1493:         pending_action_id = str(
+1494:             conversation_payload.get(
+1495:                 "pendingActionId"
+1496:             )
+1497:             or ""
+1498:         ).strip()
+1499: 
+1500:         if not pending_action_id:
+1501:             return
+1502: 
+1503:         current_domain = str(
+1504:             nlu_result.get("domain")
+1505:             or ""
+1506:         )
+1507: 
+1508:         if current_domain in {
+1509:             "",
+1510:             "UNKNOWN",
+1511:             "OUT_OF_SCOPE",
+1512:         }:
+1513:             return
+1514: 
+1515:         try:
+1516:             await self.actions.cancel(
+1517:                 context,
+1518:                 pending_action_id,
+1519:             )
+1520:         except AppError:
+1521:             pass
+1522: 
+1523:         conversation_payload.pop(
+1524:             "pendingActionId",
+1525:             None,
+1526:         )
+1527:         conversation_payload.pop(
+1528:             "proposal",
+1529:             None,
+1530:         )
+1531:         conversation_payload.pop(
+1532:             "proposalRejected",
+1533:             None,
+1534:         )
+1535: 
+1536:     @staticmethod
+1537:     def _dates_from_entities(
+1538:         entities: dict[str, Any],
+1539:     ) -> list[str]:
+1540:         values: list[str] = []
+1541: 
+1542:         for key in (
+1543:             "startDate",
+1544:             "endDate",
+1545:             "date",
+1546:         ):
+1547:             value = str(
+1548:                 entities.get(key) or ""
+1549:             ).strip()
+1550: 
+1551:             if value and value not in values:
+1552:                 values.append(value)
+1553: 
+1554:         return values
+1555: 
+1556:     @staticmethod
+1557:     def _times_from_entities(
+1558:         entities: dict[str, Any],
+1559:     ) -> list[str]:
+1560:         values: list[str] = []
+1561: 
+1562:         for key in (
+1563:             "startTime",
+1564:             "endTime",
+1565:             "time",
+1566:         ):
+1567:             value = str(
+1568:                 entities.get(key) or ""
+1569:             ).strip()
+1570: 
+1571:             if value and value not in values:
+1572:                 values.append(value)
+1573: 
+1574:         return values
+
+=== CHAT_RECENT_MENUS #1 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: recentMenus
+1162:             entities["date"] = active_date
+1163:             updated_state["entities"] = (
+1164:                 entities
+1165:             )
+1166: 
+1167:         return updated_state
+1168: 
+1169:     def _enrich_food_nlu_result(
+1170:         self,
+1171:         nlu_result: dict[str, Any],
+1172:         text: str,
+1173:         conversation_payload: dict[str, Any],
+1174:     ) -> dict[str, Any]:
+1175:         result = dict(nlu_result)
+1176: 
+1177:         is_food_follow_up = (
+1178:             str(
+1179:                 conversation_payload.get(
+1180:                     "lastDomain"
+1181:                 )
+1182:                 or ""
+1183:             )
+1184:             == "FOOD"
+1185:             and bool(
+1186:                 conversation_payload.get(
+1187:                     "recentMenus"
+1188:                 )
+1189:             )
+1190:             and (
+1191:                 bool(
+1192:                     self._infer_menu_date(
+1193:                         text,
+1194:                         conversation_payload,
+1195:                     )
+1196:                 )
+1197:                 or bool(
+1198:                     self._find_food_candidates(
+1199:                         text,
+1200:                         conversation_payload,
+1201:                     )
+1202:                 )
+1203:             )
+1204:         )
+1205: 
+1206:         if (
+1207:             result.get("domain")
+1208:             in {"UNKNOWN", "OUT_OF_SCOPE"}
+1209:             and is_food_follow_up
+1210:         ):
+1211:             inferred_date = (
+1212:                 self._infer_menu_date(
+1213:                     text,
+1214:                     conversation_payload,
+1215:                 )
+1216:                 or conversation_payload.get(
+1217:                     "activeDate"
+1218:                 )
+1219:             )
+1220:             entities: dict[str, Any] = {}
+1221: 
+1222:             if inferred_date:
+1223:                 entities["date"] = str(
+1224:                     inferred_date
+1225:                 )
+1226: 
+1227:             missing_fields = (
+1228:                 []
+1229:                 if inferred_date
+1230:                 else ["date"]
+1231:             )
+1232: 
+1233:             result = {
+1234:                 "domain": "FOOD",
+1235:                 "intent": "RESERVE_FOOD",
+1236:                 "entities": entities,
+1237:                 "confidence": 0.95,
+1238:                 "missingFields": missing_fields,
+1239:                 "needsClarification": bool(
+1240:                     missing_fields
+1241:                 ),
+1242:                 "conversationComplete": False,
+1243:                 "clarification": (
+1244:                     "برای چه روزی غذا رزرو شود؟"
+1245:                     if missing_fields
+1246:                     else None
+1247:                 ),
+1248:                 "errors": [],
+1249:                 "state": {
+1250:                     "domain": "FOOD",
+1251:                     "intent": "RESERVE_FOOD",
+1252:                     "entities": entities,
+1253:                     "missingFields": (
+1254:                         missing_fields
+1255:                     ),
+1256:                 },
+1257:             }
+1258: 
+1259:         if (
+1260:             result.get("domain")
+1261:             != "FOOD"
+1262:             or result.get("intent")
+1263:             != "RESERVE_FOOD"
+1264:         ):
+1265:             return result
+1266: 
+1267:         entities = dict(
+1268:             result.get("entities")
+1269:             or {}
+1270:         )
+1271: 
+1272:         inferred_date = (
+1273:             entities.get("date")
+1274:             or self._infer_menu_date(
+1275:                 text,
+1276:                 conversation_payload,
+1277:             )
+1278:             or conversation_payload.get(
+1279:                 "activeDate"
+1280:             )
+1281:         )
+1282: 
+1283:         if inferred_date:
+1284:             entities["date"] = str(
+1285:                 inferred_date
+1286:             )
+
+=== CHAT_RECENT_MENUS #2 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: recentMenus
+1640: 
+1641:         restaurant = data.get(
+1642:             "restaurant"
+1643:         )
+1644: 
+1645:         if isinstance(restaurant, dict):
+1646:             updated_payload[
+1647:                 "restaurant"
+1648:             ] = restaurant
+1649: 
+1650:         days = data.get("days")
+1651: 
+1652:         if not isinstance(days, list):
+1653:             menu_data = (
+1654:                 data.get("menu")
+1655:                 if isinstance(
+1656:                     data.get("menu"),
+1657:                     dict,
+1658:                 )
+1659:                 else {}
+1660:             )
+1661:             days = menu_data.get("days")
+1662: 
+1663:         if isinstance(days, list):
+1664:             updated_payload[
+1665:                 "recentMenus"
+1666:             ] = self._merge_menu_days(
+1667:                 updated_payload.get(
+1668:                     "recentMenus"
+1669:                 ),
+1670:                 days,
+1671:             )
+1672: 
+1673:             if len(days) == 1:
+1674:                 updated_payload[
+1675:                     "activeDate"
+1676:                 ] = days[0].get(
+1677:                     "date"
+1678:                 )
+1679: 
+1680:         pending_action = (
+1681:             response.get("pendingAction")
+1682:             if isinstance(
+1683:                 response.get(
+1684:                     "pendingAction"
+1685:                 ),
+1686:                 dict,
+1687:             )
+1688:             else {}
+1689:         )
+1690: 
+1691:         pending_action_id = str(
+1692:             pending_action.get("id")
+1693:             or ""
+1694:         ).strip()
+1695: 
+1696:         if pending_action_id:
+1697:             updated_payload[
+1698:                 "pendingActionId"
+1699:             ] = pending_action_id
+1700:             updated_payload[
+1701:                 "proposal"
+1702:             ] = {
+1703:                 "actionType": (
+1704:                     nlu_result.get("intent")
+1705:                 ),
+1706:                 "data": data,
+1707:                 "reply": response.get(
+1708:                     "reply"
+1709:                 ),
+1710:             }
+1711:             updated_payload.pop(
+1712:                 "proposalRejected",
+1713:                 None,
+1714:             )
+1715:         else:
+1716:             updated_payload.pop(
+1717:                 "pendingActionId",
+1718:                 None,
+1719:             )
+1720: 
+1721:         should_preserve = bool(
+1722:             pending_action_id
+1723:             or updated_payload.get(
+1724:                 "recentMenus"
+1725:             )
+1726:             or nlu_result.get(
+1727:                 "needsClarification"
+1728:             )
+1729:             or not nlu_result.get(
+1730:                 "conversationComplete",
+1731:                 False,
+1732:             )
+1733:         )
+1734: 
+1735:         if should_preserve:
+1736:             await self._save_conversation_payload(
+1737:                 context,
+1738:                 updated_payload,
+1739:             )
+1740:         else:
+1741:             await self._delete_conversation_state(
+1742:                 context
+1743:             )
+1744: 
+1745:         return response
+1746: 
+1747:     @staticmethod
+1748:     def _merge_menu_days(
+1749:         existing: Any,
+1750:         new_days: list[Any],
+1751:     ) -> list[dict[str, Any]]:
+1752:         merged: dict[
+1753:             str,
+1754:             dict[str, Any],
+1755:         ] = {}
+1756: 
+1757:         if isinstance(existing, list):
+1758:             for day in existing:
+1759:                 if not isinstance(day, dict):
+1760:                     continue
+1761: 
+1762:                 key = str(
+1763:                     day.get("date")
+1764:                     or day.get("dayOfWeek")
+
+=== CHAT_RECENT_MENUS #3 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: recentMenus
+1643:         )
+1644: 
+1645:         if isinstance(restaurant, dict):
+1646:             updated_payload[
+1647:                 "restaurant"
+1648:             ] = restaurant
+1649: 
+1650:         days = data.get("days")
+1651: 
+1652:         if not isinstance(days, list):
+1653:             menu_data = (
+1654:                 data.get("menu")
+1655:                 if isinstance(
+1656:                     data.get("menu"),
+1657:                     dict,
+1658:                 )
+1659:                 else {}
+1660:             )
+1661:             days = menu_data.get("days")
+1662: 
+1663:         if isinstance(days, list):
+1664:             updated_payload[
+1665:                 "recentMenus"
+1666:             ] = self._merge_menu_days(
+1667:                 updated_payload.get(
+1668:                     "recentMenus"
+1669:                 ),
+1670:                 days,
+1671:             )
+1672: 
+1673:             if len(days) == 1:
+1674:                 updated_payload[
+1675:                     "activeDate"
+1676:                 ] = days[0].get(
+1677:                     "date"
+1678:                 )
+1679: 
+1680:         pending_action = (
+1681:             response.get("pendingAction")
+1682:             if isinstance(
+1683:                 response.get(
+1684:                     "pendingAction"
+1685:                 ),
+1686:                 dict,
+1687:             )
+1688:             else {}
+1689:         )
+1690: 
+1691:         pending_action_id = str(
+1692:             pending_action.get("id")
+1693:             or ""
+1694:         ).strip()
+1695: 
+1696:         if pending_action_id:
+1697:             updated_payload[
+1698:                 "pendingActionId"
+1699:             ] = pending_action_id
+1700:             updated_payload[
+1701:                 "proposal"
+1702:             ] = {
+1703:                 "actionType": (
+1704:                     nlu_result.get("intent")
+1705:                 ),
+1706:                 "data": data,
+1707:                 "reply": response.get(
+1708:                     "reply"
+1709:                 ),
+1710:             }
+1711:             updated_payload.pop(
+1712:                 "proposalRejected",
+1713:                 None,
+1714:             )
+1715:         else:
+1716:             updated_payload.pop(
+1717:                 "pendingActionId",
+1718:                 None,
+1719:             )
+1720: 
+1721:         should_preserve = bool(
+1722:             pending_action_id
+1723:             or updated_payload.get(
+1724:                 "recentMenus"
+1725:             )
+1726:             or nlu_result.get(
+1727:                 "needsClarification"
+1728:             )
+1729:             or not nlu_result.get(
+1730:                 "conversationComplete",
+1731:                 False,
+1732:             )
+1733:         )
+1734: 
+1735:         if should_preserve:
+1736:             await self._save_conversation_payload(
+1737:                 context,
+1738:                 updated_payload,
+1739:             )
+1740:         else:
+1741:             await self._delete_conversation_state(
+1742:                 context
+1743:             )
+1744: 
+1745:         return response
+1746: 
+1747:     @staticmethod
+1748:     def _merge_menu_days(
+1749:         existing: Any,
+1750:         new_days: list[Any],
+1751:     ) -> list[dict[str, Any]]:
+1752:         merged: dict[
+1753:             str,
+1754:             dict[str, Any],
+1755:         ] = {}
+1756: 
+1757:         if isinstance(existing, list):
+1758:             for day in existing:
+1759:                 if not isinstance(day, dict):
+1760:                     continue
+1761: 
+1762:                 key = str(
+1763:                     day.get("date")
+1764:                     or day.get("dayOfWeek")
+1765:                     or len(merged)
+1766:                 )
+1767:                 merged[key] = dict(day)
+
+=== CHAT_RECENT_MENUS #4 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: recentMenus
+1699:             ] = pending_action_id
+1700:             updated_payload[
+1701:                 "proposal"
+1702:             ] = {
+1703:                 "actionType": (
+1704:                     nlu_result.get("intent")
+1705:                 ),
+1706:                 "data": data,
+1707:                 "reply": response.get(
+1708:                     "reply"
+1709:                 ),
+1710:             }
+1711:             updated_payload.pop(
+1712:                 "proposalRejected",
+1713:                 None,
+1714:             )
+1715:         else:
+1716:             updated_payload.pop(
+1717:                 "pendingActionId",
+1718:                 None,
+1719:             )
+1720: 
+1721:         should_preserve = bool(
+1722:             pending_action_id
+1723:             or updated_payload.get(
+1724:                 "recentMenus"
+1725:             )
+1726:             or nlu_result.get(
+1727:                 "needsClarification"
+1728:             )
+1729:             or not nlu_result.get(
+1730:                 "conversationComplete",
+1731:                 False,
+1732:             )
+1733:         )
+1734: 
+1735:         if should_preserve:
+1736:             await self._save_conversation_payload(
+1737:                 context,
+1738:                 updated_payload,
+1739:             )
+1740:         else:
+1741:             await self._delete_conversation_state(
+1742:                 context
+1743:             )
+1744: 
+1745:         return response
+1746: 
+1747:     @staticmethod
+1748:     def _merge_menu_days(
+1749:         existing: Any,
+1750:         new_days: list[Any],
+1751:     ) -> list[dict[str, Any]]:
+1752:         merged: dict[
+1753:             str,
+1754:             dict[str, Any],
+1755:         ] = {}
+1756: 
+1757:         if isinstance(existing, list):
+1758:             for day in existing:
+1759:                 if not isinstance(day, dict):
+1760:                     continue
+1761: 
+1762:                 key = str(
+1763:                     day.get("date")
+1764:                     or day.get("dayOfWeek")
+1765:                     or len(merged)
+1766:                 )
+1767:                 merged[key] = dict(day)
+1768: 
+1769:         for day in new_days:
+1770:             if not isinstance(day, dict):
+1771:                 continue
+1772: 
+1773:             key = str(
+1774:                 day.get("date")
+1775:                 or day.get("dayOfWeek")
+1776:                 or len(merged)
+1777:             )
+1778:             merged[key] = dict(day)
+1779: 
+1780:         return list(merged.values())[-14:]
+1781: 
+1782:     @staticmethod
+1783:     def _infer_menu_date(
+1784:         text: str,
+1785:         conversation_payload: dict[str, Any],
+1786:     ) -> str | None:
+1787:         normalized = normalize_nlu_text(
+1788:             text
+1789:         )
+1790: 
+1791:         recent_menus = (
+1792:             conversation_payload.get(
+1793:                 "recentMenus"
+1794:             )
+1795:             or []
+1796:         )
+1797: 
+1798:         for day in recent_menus:
+1799:             if not isinstance(day, dict):
+1800:                 continue
+1801: 
+1802:             date_value = str(
+1803:                 day.get("date") or ""
+1804:             ).strip()
+1805:             day_name = normalize_nlu_text(
+1806:                 day.get("dayOfWeek")
+1807:                 or ""
+1808:             )
+1809: 
+1810:             if (
+1811:                 date_value
+1812:                 and date_value in normalized
+1813:             ):
+1814:                 return date_value
+1815: 
+1816:             if (
+1817:                 day_name
+1818:                 and day_name in normalized
+1819:             ):
+1820:                 return date_value or None
+1821: 
+1822:         return None
+1823: 
+
+=== CHAT_RECENT_MENUS #5 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: recentMenus
+1768: 
+1769:         for day in new_days:
+1770:             if not isinstance(day, dict):
+1771:                 continue
+1772: 
+1773:             key = str(
+1774:                 day.get("date")
+1775:                 or day.get("dayOfWeek")
+1776:                 or len(merged)
+1777:             )
+1778:             merged[key] = dict(day)
+1779: 
+1780:         return list(merged.values())[-14:]
+1781: 
+1782:     @staticmethod
+1783:     def _infer_menu_date(
+1784:         text: str,
+1785:         conversation_payload: dict[str, Any],
+1786:     ) -> str | None:
+1787:         normalized = normalize_nlu_text(
+1788:             text
+1789:         )
+1790: 
+1791:         recent_menus = (
+1792:             conversation_payload.get(
+1793:                 "recentMenus"
+1794:             )
+1795:             or []
+1796:         )
+1797: 
+1798:         for day in recent_menus:
+1799:             if not isinstance(day, dict):
+1800:                 continue
+1801: 
+1802:             date_value = str(
+1803:                 day.get("date") or ""
+1804:             ).strip()
+1805:             day_name = normalize_nlu_text(
+1806:                 day.get("dayOfWeek")
+1807:                 or ""
+1808:             )
+1809: 
+1810:             if (
+1811:                 date_value
+1812:                 and date_value in normalized
+1813:             ):
+1814:                 return date_value
+1815: 
+1816:             if (
+1817:                 day_name
+1818:                 and day_name in normalized
+1819:             ):
+1820:                 return date_value or None
+1821: 
+1822:         return None
+1823: 
+1824:     @staticmethod
+1825:     def _rejected_proposal_reply(
+1826:         proposal: dict[str, Any],
+1827:         conversation_payload: dict[str, Any],
+1828:     ) -> str:
+1829:         action_type = str(
+1830:             proposal.get("actionType")
+1831:             or ""
+1832:         )
+1833:         data = (
+1834:             proposal.get("data")
+1835:             if isinstance(
+1836:                 proposal.get("data"),
+1837:                 dict,
+1838:             )
+1839:             else {}
+1840:         )
+1841: 
+1842:         if action_type == "RESERVE_FOOD":
+1843:             food = (
+1844:                 data.get("food")
+1845:                 if isinstance(
+1846:                     data.get("food"),
+1847:                     dict,
+1848:                 )
+1849:                 else {}
+1850:             )
+1851:             food_name = str(
+1852:                 food.get("foodName")
+1853:                 or "این غذا"
+1854:             )
+1855:             target_date = str(
+1856:                 data.get("date")
+1857:                 or conversation_payload.get(
+1858:                     "activeDate"
+1859:                 )
+1860:                 or "این روز"
+1861:             )
+1862:             target_label = str(
+1863:                 data.get("dayOfWeek")
+1864:                 or target_date
+1865:             )
+1866: 
+1867:             alternatives = (
+1868:                 conversation_payload.get(
+1869:                     "recentMenus"
+1870:                 )
+1871:                 or []
+1872:             )
+1873:             other_dates: list[str] = []
+1874: 
+1875:             for day in alternatives:
+1876:                 if not isinstance(day, dict):
+1877:                     continue
+1878: 
+1879:                 day_date = str(
+1880:                     day.get("date") or ""
+1881:                 )
+1882: 
+1883:                 if (
+1884:                     not day_date
+1885:                     or day_date == target_date
+1886:                 ):
+1887:                     continue
+1888: 
+1889:                 foods = day.get("foods") or []
+1890: 
+1891:                 if any(
+1892:                     normalize_nlu_text(
+
+=== CHAT_SAVE_PAYLOAD #1 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: _save_conversation_payload(
+205:                         nlu_result.get("state")
+206:                         or {}
+207:                     ),
+208:                     "originalMessage": (
+209:                         combined_text
+210:                     ),
+211:                     "lastDomain": (
+212:                         nlu_result.get("domain")
+213:                     ),
+214:                 }
+215:             )
+216:             updated_payload.pop(
+217:                 "pendingActionId",
+218:                 None,
+219:             )
+220:             updated_payload.pop(
+221:                 "proposal",
+222:                 None,
+223:             )
+224: 
+225:             await self._save_conversation_payload(
+226:                 context,
+227:                 updated_payload,
+228:             )
+229: 
+230:             return {
+231:                 "reply": (
+232:                     nlu_result.get(
+233:                         "clarification"
+234:                     )
+235:                     or (
+236:                         "لطفاً جزئیات بیشتری "
+237:                         "بفرمایید."
+238:                     )
+239:                 ),
+240:                 "requiresConfirmation": False,
+241:                 "data": {
+242:                     "domain": (
+243:                         nlu_result.get("domain")
+244:                     ),
+245:                     "intent": (
+246:                         nlu_result.get("intent")
+247:                     ),
+248:                     "missingFields": (
+249:                         nlu_result.get(
+250:                             "missingFields"
+251:                         )
+252:                         or []
+253:                     ),
+254:                 },
+255:             }
+256: 
+257:         entities = (
+258:             nlu_result.get("entities")
+259:             if isinstance(
+260:                 nlu_result.get("entities"),
+261:                 dict,
+262:             )
+263:             else {}
+264:         )
+265: 
+266:         dates = self._dates_from_entities(
+267:             entities
+268:         )
+269:         times = self._times_from_entities(
+270:             entities
+271:         )
+272: 
+273:         intent = str(
+274:             nlu_result.get("intent")
+275:             or ""
+276:         )
+277:         domain = str(
+278:             nlu_result.get("domain")
+279:             or ""
+280:         )
+281: 
+282:         try:
+283:             if intent in {
+284:                 "SHOW_FOOD_MENU",
+285:                 "SHOW_FOOD_RESERVATION",
+286:                 "RESERVE_FOOD",
+287:                 "CANCEL_FOOD",
+288:                 "FOOD_UNKNOWN",
+289:             } or (
+290:                 domain == "FOOD"
+291:                 and self._is_food(text)
+292:             ):
+293:                 response = await self._handle_food(
+294:                     context,
+295:                     combined_text,
+296:                     dates,
+297:                     restaurant_validated=(
+298:                         context.restaurant_id
+299:                         is not None
+300:                     ),
+301:                     selected_restaurant=(
+302:                         selected_restaurant
+303:                     ),
+304:                     conversation_payload=(
+305:                         conversation_payload
+306:                     ),
+307:                 )
+308: 
+309:                 return await self._finalize_response_state(
+310:                     context,
+311:                     nlu_result,
+312:                     conversation_payload,
+313:                     response,
+314:                     combined_text,
+
+=== CHAT_SAVE_PAYLOAD #2 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: _save_conversation_payload(
+860:                         return replay_response
+861: 
+862:                 raise
+863: 
+864:             success_reply = (
+865:                 self._action_success_reply(
+866:                     pending_action.action_type
+867:                 )
+868:             )
+869: 
+870:             success_status = str(
+871:                 result.get("status")
+872:                 or "succeeded"
+873:             )
+874: 
+875:             success_data = result.get(
+876:                 "result",
+877:                 result,
+878:             )
+879: 
+880:             await self._save_conversation_payload(
+881:                 context,
+882:                 {
+883:                     "lastSuccessfulAction": {
+884:                         "actionId": (
+885:                             pending_action.id
+886:                         ),
+887:                         "actionType": (
+888:                             pending_action.action_type
+889:                         ),
+890:                         "status": success_status,
+891:                         "reply": success_reply,
+892:                         "data": success_data,
+893:                         "completedAtEpoch": (
+894:                             time.time()
+895:                         ),
+896:                     },
+897:                 },
+898:             )
+899: 
+900:             return {
+901:                 "reply": success_reply,
+902:                 "requiresConfirmation": False,
+903:                 "action": {
+904:                     "id": pending_action.id,
+905:                     "type": (
+906:                         pending_action.action_type
+907:                     ),
+908:                     "status": success_status,
+909:                 },
+910:                 "data": success_data,
+911:             }
+912: 
+913:         if reply_kind == "reject":
+914:             if pending_action is not None:
+915:                 await self.actions.cancel(
+916:                     context,
+917:                     pending_action.id,
+918:                 )
+919: 
+920:             if not conversation_payload:
+921:                 return {
+922:                     "reply": (
+923:                         "پیشنهاد فعالی برای رد کردن "
+924:                         "در این مکالمه وجود ندارد."
+925:                     ),
+926:                     "requiresConfirmation": False,
+927:                 }
+928: 
+929:             updated_payload = dict(
+930:                 conversation_payload
+931:             )
+932:             updated_payload.pop(
+933:                 "pendingActionId",
+934:                 None,
+935:             )
+936:             proposal = (
+937:                 updated_payload.get("proposal")
+938:                 if isinstance(
+939:                     updated_payload.get(
+940:                         "proposal"
+941:                     ),
+942:                     dict,
+943:                 )
+944:                 else {}
+945:             )
+946:             updated_payload[
+947:                 "proposalRejected"
+948:             ] = True
+949: 
+950:             nlu_state = (
+951:                 dict(
+952:                     updated_payload.get(
+953:                         "nluState"
+954:                     )
+955:                     or {}
+956:                 )
+957:             )
+958:             nlu_state[
+959:                 "proposalRejected"
+960:             ] = True
+961:             nlu_state[
+962:                 "missingFields"
+963:             ] = ["alternative"]
+964:             updated_payload[
+965:                 "nluState"
+966:             ] = nlu_state
+967: 
+968:             await self._save_conversation_payload(
+969:                 context,
+
+=== CHAT_SAVE_PAYLOAD #3 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: _save_conversation_payload(
+948:             ] = True
+949: 
+950:             nlu_state = (
+951:                 dict(
+952:                     updated_payload.get(
+953:                         "nluState"
+954:                     )
+955:                     or {}
+956:                 )
+957:             )
+958:             nlu_state[
+959:                 "proposalRejected"
+960:             ] = True
+961:             nlu_state[
+962:                 "missingFields"
+963:             ] = ["alternative"]
+964:             updated_payload[
+965:                 "nluState"
+966:             ] = nlu_state
+967: 
+968:             await self._save_conversation_payload(
+969:                 context,
+970:                 updated_payload,
+971:             )
+972: 
+973:             return {
+974:                 "reply": self._rejected_proposal_reply(
+975:                     proposal,
+976:                     updated_payload,
+977:                 ),
+978:                 "requiresConfirmation": False,
+979:                 "data": {
+980:                     "proposalRejected": True,
+981:                 },
+982:             }
+983: 
+984:         if pending_action is not None:
+985:             result = await self.actions.cancel(
+986:                 context,
+987:                 pending_action.id,
+988:             )
+989:             message = (
+990:                 result.get("message")
+991:                 or "عملیات لغو شد."
+992:             )
+993:         else:
+994:             message = (
+995:                 "فرایند فعال این مکالمه لغو شد."
+996:             )
+997: 
+998:         await self._delete_conversation_state(
+999:             context
+1000:         )
+1001: 
+1002:         return {
+1003:             "reply": message,
+1004:             "requiresConfirmation": False,
+1005:             "data": {
+1006:                 "conversationCancelled": True,
+1007:             },
+1008:         }
+1009: 
+1010:     async def _load_conversation_payload(
+1011:         self,
+1012:         context: AgentContext,
+1013:     ) -> dict[str, Any]:
+1014:         employee_id = str(
+1015:             context.employee_id or ""
+1016:         ).strip()
+1017: 
+1018:         if not employee_id:
+1019:             return {}
+1020: 
+1021:         state = await asyncio.to_thread(
+1022:             self.repository.get_chat_state,
+1023:             employee_id,
+1024:             context.conversation_id,
+1025:         )
+1026: 
+1027:         if not state:
+1028:             return {}
+1029: 
+1030:         if str(
+1031:             state.get("stateType") or ""
+1032:         ) != CONVERSATION_STATE:
+1033:             return {}
+1034: 
+1035:         payload = state.get("payload")
+1036: 
+1037:         return (
+1038:             dict(payload)
+1039:             if isinstance(payload, dict)
+1040:             else {}
+1041:         )
+1042: 
+1043:     async def _save_conversation_payload(
+1044:         self,
+1045:         context: AgentContext,
+1046:         payload: dict[str, Any],
+1047:     ) -> None:
+1048:         employee_id = str(
+1049:             context.employee_id or ""
+1050:         ).strip()
+1051: 
+1052:         if not employee_id:
+1053:             return
+1054: 
+1055:         await asyncio.to_thread(
+1056:             self.repository.save_chat_state,
+1057:             employee_id,
+
+=== CHAT_SAVE_PAYLOAD #4 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: _save_conversation_payload(
+1023:             employee_id,
+1024:             context.conversation_id,
+1025:         )
+1026: 
+1027:         if not state:
+1028:             return {}
+1029: 
+1030:         if str(
+1031:             state.get("stateType") or ""
+1032:         ) != CONVERSATION_STATE:
+1033:             return {}
+1034: 
+1035:         payload = state.get("payload")
+1036: 
+1037:         return (
+1038:             dict(payload)
+1039:             if isinstance(payload, dict)
+1040:             else {}
+1041:         )
+1042: 
+1043:     async def _save_conversation_payload(
+1044:         self,
+1045:         context: AgentContext,
+1046:         payload: dict[str, Any],
+1047:     ) -> None:
+1048:         employee_id = str(
+1049:             context.employee_id or ""
+1050:         ).strip()
+1051: 
+1052:         if not employee_id:
+1053:             return
+1054: 
+1055:         await asyncio.to_thread(
+1056:             self.repository.save_chat_state,
+1057:             employee_id,
+1058:             CONVERSATION_STATE,
+1059:             payload,
+1060:             CONVERSATION_STATE_TTL_MINUTES,
+1061:             context.conversation_id,
+1062:         )
+1063: 
+1064:     async def _delete_conversation_state(
+1065:         self,
+1066:         context: AgentContext,
+1067:     ) -> None:
+1068:         employee_id = str(
+1069:             context.employee_id or ""
+1070:         ).strip()
+1071: 
+1072:         if not employee_id:
+1073:             return
+1074: 
+1075:         await asyncio.to_thread(
+1076:             self.repository.delete_chat_state,
+1077:             employee_id,
+1078:             context.conversation_id,
+1079:         )
+1080: 
+1081:     @staticmethod
+1082:     def _apply_saved_restaurant(
+1083:         context: AgentContext,
+1084:         conversation_payload: dict[str, Any],
+1085:     ) -> tuple[
+1086:         AgentContext,
+1087:         dict[str, Any] | None,
+1088:     ]:
+1089:         restaurant = (
+1090:             conversation_payload.get(
+1091:                 "restaurant"
+1092:             )
+1093:             if isinstance(
+1094:                 conversation_payload.get(
+1095:                     "restaurant"
+1096:                 ),
+1097:                 dict,
+1098:             )
+1099:             else None
+1100:         )
+1101: 
+1102:         restaurant_id = (
+1103:             parse_int(
+1104:                 restaurant.get(
+1105:                     "restaurantId"
+1106:                 )
+1107:             )
+1108:             if restaurant
+1109:             else None
+1110:         )
+1111: 
+1112:         if restaurant_id is None:
+1113:             return context, restaurant
+1114: 
+1115:         updated_context = context.model_copy(
+1116:             update={
+1117:                 "restaurant_id": restaurant_id,
+1118:                 "meal_id": (
+1119:                     context.meal_id
+1120:                     or FOOD_MEAL_ID
+1121:                 ),
+1122:             }
+1123:         )
+1124: 
+1125:         return updated_context, restaurant
+1126: 
+1127:     @staticmethod
+1128:     def _nlu_state_with_active_date(
+1129:         previous_state: dict[str, Any] | None,
+1130:         conversation_payload: dict[str, Any],
+1131:     ) -> dict[str, Any] | None:
+1132:         if not previous_state:
+
+=== CHAT_SAVE_PAYLOAD #5 ===
+FILE: D:\serviceAi\app\application\services\chat_service.py
+MARKER: _save_conversation_payload(
+1716:             updated_payload.pop(
+1717:                 "pendingActionId",
+1718:                 None,
+1719:             )
+1720: 
+1721:         should_preserve = bool(
+1722:             pending_action_id
+1723:             or updated_payload.get(
+1724:                 "recentMenus"
+1725:             )
+1726:             or nlu_result.get(
+1727:                 "needsClarification"
+1728:             )
+1729:             or not nlu_result.get(
+1730:                 "conversationComplete",
+1731:                 False,
+1732:             )
+1733:         )
+1734: 
+1735:         if should_preserve:
+1736:             await self._save_conversation_payload(
+1737:                 context,
+1738:                 updated_payload,
+1739:             )
+1740:         else:
+1741:             await self._delete_conversation_state(
+1742:                 context
+1743:             )
+1744: 
+1745:         return response
+1746: 
+1747:     @staticmethod
+1748:     def _merge_menu_days(
+1749:         existing: Any,
+1750:         new_days: list[Any],
+1751:     ) -> list[dict[str, Any]]:
+1752:         merged: dict[
+1753:             str,
+1754:             dict[str, Any],
+1755:         ] = {}
+1756: 
+1757:         if isinstance(existing, list):
+1758:             for day in existing:
+1759:                 if not isinstance(day, dict):
+1760:                     continue
+1761: 
+1762:                 key = str(
+1763:                     day.get("date")
+1764:                     or day.get("dayOfWeek")
+1765:                     or len(merged)
+1766:                 )
+1767:                 merged[key] = dict(day)
+1768: 
+1769:         for day in new_days:
+1770:             if not isinstance(day, dict):
+1771:                 continue
+1772: 
+1773:             key = str(
+1774:                 day.get("date")
+1775:                 or day.get("dayOfWeek")
+1776:                 or len(merged)
+1777:             )
+1778:             merged[key] = dict(day)
+1779: 
+1780:         return list(merged.values())[-14:]
+1781: 
+1782:     @staticmethod
+1783:     def _infer_menu_date(
+1784:         text: str,
+1785:         conversation_payload: dict[str, Any],
+1786:     ) -> str | None:
+1787:         normalized = normalize_nlu_text(
+1788:             text
+1789:         )
+1790: 
+1791:         recent_menus = (
+1792:             conversation_payload.get(
+1793:                 "recentMenus"
+1794:             )
+1795:             or []
+1796:         )
+1797: 
+1798:         for day in recent_menus:
+1799:             if not isinstance(day, dict):
+1800:                 continue
+1801: 
+1802:             date_value = str(
+1803:                 day.get("date") or ""
+1804:             ).strip()
+1805:             day_name = normalize_nlu_text(
+1806:                 day.get("dayOfWeek")
+1807:                 or ""
+1808:             )
+1809: 
+1810:             if (
+1811:                 date_value
+1812:                 and date_value in normalized
+1813:             ):
+1814:                 return date_value
+1815: 
+1816:             if (
+1817:                 day_name
+1818:                 and day_name in normalized
+1819:             ):
+1820:                 return date_value or None
+1821: 
+1822:         return None
+1823: 
+1824:     @staticmethod
+1825:     def _rejected_proposal_reply(
+
+=== NLU_RESERVE_FOOD #1 ===
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+MARKER: RESERVE_FOOD
+1365:     if (
+1366:         has_cancel_word
+1367:         and (
+1368:             has_food_word
+1369:             or has_reservation_word
+1370:         )
+1371:     ):
+1372:         return "FOOD", "CANCEL_FOOD"
+1373: 
+1374:     reservation_status_phrases = [
+1375:         "چی رزرو کردم",
+1376:         "چه چیزی رزرو کردم",
+1377:         "چی برام رزرو شده",
+1378:         "رزرو من",
+1379:         "رزرو شده",
+1380:     ]
+1381: 
+1382:     if _contains_any_phrase(
+1383:         text,
+1384:         reservation_status_phrases,
+1385:     ):
+1386:         return (
+1387:             "FOOD",
+1388:             "SHOW_FOOD_RESERVATION",
+1389:         )
+1390: 
+1391:     if (
+1392:         has_food_word
+1393:         and has_reserve_word
+1394:     ):
+1395:         return "FOOD", "RESERVE_FOOD"
+1396: 
+1397:     if (
+1398:         _contains_word(text, "رزرو")
+1399:         and _contains_any_word(
+1400:             text,
+1401:             {"کن", "کنم", "بده"},
+1402:         )
+1403:     ):
+1404:         return "FOOD", "RESERVE_FOOD"
+1405: 
+1406:     menu_phrases = [
+1407:         "چه غذایی",
+1408:         "چه غذا",
+1409:         "چی داریم",
+1410:         "ناهارهای این هفته",
+1411:         "منوی غذا",
+1412:     ]
+1413: 
+1414:     if (
+1415:         _contains_word(text, "منو")
+1416:         or (
+1417:             has_food_word
+1418:             and (
+1419:                 _contains_any_word(
+1420:                     text,
+1421:                     _SHOW_WORDS,
+1422:                 )
+1423:                 or _contains_any_phrase(
+1424:                     text,
+1425:                     menu_phrases,
+1426:                 )
+1427:             )
+1428:         )
+1429:     ):
+1430:         return "FOOD", "SHOW_FOOD_MENU"
+1431: 
+1432:     if has_food_word:
+1433:         return "FOOD", "FOOD_UNKNOWN"
+1434: 
+1435:     return None
+1436: 
+1437: 
+1438: def _detect_leave_intent(
+1439:     text: str,
+1440: ) -> tuple[str, str] | None:
+1441:     if not _contains_word(
+1442:         text,
+1443:         "مرخصی",
+1444:     ):
+1445:         return None
+1446: 
+1447:     balance_words = {
+1448:         "مانده",
+1449:         "باقی",
+1450:         "باقیمانده",
+1451:         "موجودی",
+1452:         "حساب",
+1453:         "چقدر",
+1454:         "دارم",
+1455:         "مونده",
+1456:         "ماندهام",
+1457:     }
+1458: 
+1459:     balance_phrases = [
+1460:         "چند ساعت مرخصی",
+1461:         "چند روز مرخصی",
+1462:         "وضعیت حساب مرخصی",
+1463:         "مرخصی باقی مونده",
+1464:         "مانده مرخصی",
+1465:     ]
+1466: 
+1467:     if (
+1468:         _contains_any_word(
+1469:             text,
+1470:             balance_words,
+1471:         )
+1472:         or _contains_any_phrase(
+1473:             text,
+1474:             balance_phrases,
+1475:         )
+1476:     ):
+1477:         return (
+1478:             "LEAVE",
+1479:             "GET_LEAVE_BALANCE",
+1480:         )
+1481: 
+1482:     if _contains_any_word(
+1483:         text,
+1484:         _CANCEL_WORDS,
+1485:     ):
+1486:         return (
+1487:             "LEAVE",
+1488:             "CANCEL_LEAVE",
+1489:         )
+1490: 
+1491:     if _contains_any_word(
+1492:         text,
+1493:         _CREATE_WORDS,
+1494:     ):
+1495:         return (
+1496:             "LEAVE",
+1497:             "CREATE_LEAVE",
+1498:         )
+1499: 
+1500:     if _contains_any_word(
+1501:         text,
+1502:         _SHOW_WORDS,
+1503:     ):
+1504:         return (
+1505:             "LEAVE",
+1506:             "SHOW_LEAVE_REQUESTS",
+1507:         )
+1508: 
+1509:     return "LEAVE", "LEAVE_UNKNOWN"
+1510: 
+1511: 
+1512: def _detect_mission_intent(
+1513:     text: str,
+1514: ) -> tuple[str, str] | None:
+1515:     if not _contains_word(
+1516:         text,
+1517:         "ماموریت",
+1518:     ):
+1519:         return None
+1520: 
+1521:     if _contains_any_word(
+1522:         text,
+1523:         _CANCEL_WORDS,
+1524:     ):
+
+=== NLU_RESERVE_FOOD #2 ===
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+MARKER: RESERVE_FOOD
+1374:     reservation_status_phrases = [
+1375:         "چی رزرو کردم",
+1376:         "چه چیزی رزرو کردم",
+1377:         "چی برام رزرو شده",
+1378:         "رزرو من",
+1379:         "رزرو شده",
+1380:     ]
+1381: 
+1382:     if _contains_any_phrase(
+1383:         text,
+1384:         reservation_status_phrases,
+1385:     ):
+1386:         return (
+1387:             "FOOD",
+1388:             "SHOW_FOOD_RESERVATION",
+1389:         )
+1390: 
+1391:     if (
+1392:         has_food_word
+1393:         and has_reserve_word
+1394:     ):
+1395:         return "FOOD", "RESERVE_FOOD"
+1396: 
+1397:     if (
+1398:         _contains_word(text, "رزرو")
+1399:         and _contains_any_word(
+1400:             text,
+1401:             {"کن", "کنم", "بده"},
+1402:         )
+1403:     ):
+1404:         return "FOOD", "RESERVE_FOOD"
+1405: 
+1406:     menu_phrases = [
+1407:         "چه غذایی",
+1408:         "چه غذا",
+1409:         "چی داریم",
+1410:         "ناهارهای این هفته",
+1411:         "منوی غذا",
+1412:     ]
+1413: 
+1414:     if (
+1415:         _contains_word(text, "منو")
+1416:         or (
+1417:             has_food_word
+1418:             and (
+1419:                 _contains_any_word(
+1420:                     text,
+1421:                     _SHOW_WORDS,
+1422:                 )
+1423:                 or _contains_any_phrase(
+1424:                     text,
+1425:                     menu_phrases,
+1426:                 )
+1427:             )
+1428:         )
+1429:     ):
+1430:         return "FOOD", "SHOW_FOOD_MENU"
+1431: 
+1432:     if has_food_word:
+1433:         return "FOOD", "FOOD_UNKNOWN"
+1434: 
+1435:     return None
+1436: 
+1437: 
+1438: def _detect_leave_intent(
+1439:     text: str,
+1440: ) -> tuple[str, str] | None:
+1441:     if not _contains_word(
+1442:         text,
+1443:         "مرخصی",
+1444:     ):
+1445:         return None
+1446: 
+1447:     balance_words = {
+1448:         "مانده",
+1449:         "باقی",
+1450:         "باقیمانده",
+1451:         "موجودی",
+1452:         "حساب",
+1453:         "چقدر",
+1454:         "دارم",
+1455:         "مونده",
+1456:         "ماندهام",
+1457:     }
+1458: 
+1459:     balance_phrases = [
+1460:         "چند ساعت مرخصی",
+1461:         "چند روز مرخصی",
+1462:         "وضعیت حساب مرخصی",
+1463:         "مرخصی باقی مونده",
+1464:         "مانده مرخصی",
+1465:     ]
+1466: 
+1467:     if (
+1468:         _contains_any_word(
+1469:             text,
+1470:             balance_words,
+1471:         )
+1472:         or _contains_any_phrase(
+1473:             text,
+1474:             balance_phrases,
+1475:         )
+1476:     ):
+1477:         return (
+1478:             "LEAVE",
+1479:             "GET_LEAVE_BALANCE",
+1480:         )
+1481: 
+1482:     if _contains_any_word(
+1483:         text,
+1484:         _CANCEL_WORDS,
+1485:     ):
+1486:         return (
+1487:             "LEAVE",
+1488:             "CANCEL_LEAVE",
+1489:         )
+1490: 
+1491:     if _contains_any_word(
+1492:         text,
+1493:         _CREATE_WORDS,
+1494:     ):
+1495:         return (
+1496:             "LEAVE",
+1497:             "CREATE_LEAVE",
+1498:         )
+1499: 
+1500:     if _contains_any_word(
+1501:         text,
+1502:         _SHOW_WORDS,
+1503:     ):
+1504:         return (
+1505:             "LEAVE",
+1506:             "SHOW_LEAVE_REQUESTS",
+1507:         )
+1508: 
+1509:     return "LEAVE", "LEAVE_UNKNOWN"
+1510: 
+1511: 
+1512: def _detect_mission_intent(
+1513:     text: str,
+1514: ) -> tuple[str, str] | None:
+1515:     if not _contains_word(
+1516:         text,
+1517:         "ماموریت",
+1518:     ):
+1519:         return None
+1520: 
+1521:     if _contains_any_word(
+1522:         text,
+1523:         _CANCEL_WORDS,
+1524:     ):
+1525:         return (
+1526:             "MISSION",
+1527:             "CANCEL_MISSION",
+1528:         )
+1529: 
+1530:     if _contains_any_word(
+1531:         text,
+1532:         _CREATE_WORDS,
+1533:     ):
+
+=== NLU_RESERVE_FOOD #3 ===
+FILE: D:\serviceAi\app\application\services\nlu_core.py
+MARKER: RESERVE_FOOD
+1961:                         ),
+1962:                         str(meridiem),
+1963:                     ),
+1964:                     int(
+1965:                         entities.get(
+1966:                             "ambiguousMinute"
+1967:                         )
+1968:                         or 0
+1969:                     ),
+1970:                 )
+1971:                 entities.pop(
+1972:                     "ambiguousHour",
+1973:                     None,
+1974:                 )
+1975:                 entities.pop(
+1976:                     "ambiguousMinute",
+1977:                     None,
+1978:                 )
+1979: 
+1980:     return entities
+1981: 
+1982: 
+1983: def _required_fields(
+1984:     domain: str,
+1985:     intent: str,
+1986:     entities: dict[str, Any],
+1987:     time_entities: dict[str, Any],
+1988: ) -> list[str]:
+1989:     missing: list[str] = []
+1990: 
+1991:     if intent == "RESERVE_FOOD":
+1992:         if not (
+1993:             entities.get("date")
+1994:             or entities.get("dateScope")
+1995:         ):
+1996:             missing.append("date")
+1997: 
+1998:     elif intent in {
+1999:         "CREATE_LEAVE",
+2000:         "CREATE_MISSION",
+2001:     }:
+2002:         if not entities.get("startDate"):
+2003:             missing.append("date")
+2004: 
+2005:     elif intent == "CREATE_TIME_EVENT":
+2006:         if not entities.get("date"):
+2007:             missing.append("date")
+2008: 
+2009:         if (
+2010:             time_entities.get("ambiguous")
+2011:             or entities.get(
+2012:                 "ambiguousHour"
+2013:             )
+2014:             is not None
+2015:         ):
+2016:             missing.append("meridiem")
+2017: 
+2018:         elif not entities.get("time"):
+2019:             missing.append("time")
+2020: 
+2021:         if not entities.get("eventType"):
+2022:             missing.append("eventType")
+2023: 
+2024:     elif intent == "CREATE_TIME_EVENT_RANGE":
+2025:         if not entities.get("date"):
+2026:             missing.append("date")
+2027: 
+2028:         if (
+2029:             time_entities.get(
+2030:                 "startAmbiguous"
+2031:             )
+2032:             or time_entities.get(
+2033:                 "endAmbiguous"
+2034:             )
+2035:             or entities.get(
+2036:                 "ambiguousStartHour"
+2037:             )
+2038:             is not None
+2039:             or entities.get(
+2040:                 "ambiguousEndHour"
+2041:             )
+2042:             is not None
+2043:         ):
+2044:             missing.append("meridiem")
+2045: 
+2046:         if not entities.get("startTime"):
+2047:             missing.append("startTime")
+2048: 
+2049:         if not entities.get("endTime"):
+2050:             missing.append("endTime")
+2051: 
+2052:     elif intent in {
+2053:         "FOOD_UNKNOWN",
+2054:         "LEAVE_UNKNOWN",
+2055:         "MISSION_UNKNOWN",
+2056:         "NEEDS_DOMAIN",
+2057:     }:
+2058:         missing.append("intent")
+2059: 
+2060:     return list(dict.fromkeys(missing))
+2061: 
+2062: 
+2063: def _clarification_message(
+2064:     *,
+2065:     domain: str,
+2066:     intent: str,
+2067:     missing_fields: list[str],
+2068:     errors: list[str],
+2069: ) -> str | None:
+2070:     if errors:
+2071:         return (
+2072:             f"{errors[0]} "
+2073:             "برای نمونه بنویسید: "
+2074:             "ساعت ۱۰ و ۵۰ دقیقه."
+2075:         )
+2076: 
+2077:     if "meridiem" in missing_fields:
+2078:         return (
+2079:             "منظورتان صبح است یا شب؟ "
+2080:             "برای نمونه: ساعت ۱۰ صبح "
+2081:             "یا ساعت ۱۰ شب."
+2082:         )
+2083: 
+2084:     if "date" in missing_fields:
+2085:         if domain == "FOOD":
+2086:             return (
+2087:                 "برای چه روزی غذا رزرو شود؟ "
+2088:                 "مثلاً امروز، فردا یا کل هفته."
+2089:             )
+2090: 
+2091:         return (
+2092:             "تاریخ درخواست را بفرمایید؛ "
+2093:             "مثلاً امروز، فردا یا "
+2094:             "۱۴۰۵/۰۴/۲۵."
+2095:         )
+2096: 
+2097:     if "time" in missing_fields:
+2098:         return (
+2099:             "ساعت تردد را بفرمایید؛ "
+2100:             "مثلاً ساعت ۸ صبح یا "
+2101:             "۱۰ و ۵۰ دقیقه شب."
+2102:         )
+2103: 
+2104:     if "eventType" in missing_fields:
+2105:         return (
+2106:             "این تردد مربوط به ورود است "
+2107:             "یا خروج؟"
+2108:         )
+2109: 
+2110:     if "startTime" in missing_fields:
+2111:         return (
+2112:             "ساعت شروع تردد را بفرمایید."
+2113:         )
+2114: 
+2115:     if "endTime" in missing_fields:
+2116:         return (
+2117:             "ساعت پایان تردد را بفرمایید."
+2118:         )
+2119: 
+2120:     if "intent" in missing_fields:
+
+=== NLU_REGISTER_WORDS ===
+MARKER_NOT_FOUND: ثبت غذا

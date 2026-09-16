@@ -1,0 +1,139 @@
+===== D:\serviceAi\app\application\services\action_service.py lines 620-690 =====
+620: 
+621:             leave_type = next(
+622:                 (
+623:                     item
+624:                     for item in rows
+625:                     if str(
+626:                         item.get("absenceTypeCode")
+627:                     )
+628:                     == str(
+629:                         payload.get("absenceTypeCode")
+630:                     )
+631:                 ),
+632:                 None,
+633:             )
+634: 
+635:             if not leave_type:
+636:                 raise AppError(
+637:                     "نوع درخواست در API HR پیدا نشد.",
+638:                     details={
+639:                         "absenceTypeCode": payload.get(
+640:                             "absenceTypeCode"
+641:                         ),
+642:                     },
+643:                 )
+644: 
+645:             await self.hr.ensure_no_exact_duplicate_leave(
+646:                 context,
+647:                 absence_type_code=str(
+648:                     payload.get("absenceTypeCode") or ""
+649:                 ),
+650:                 start_date=payload["startDate"],
+651:                 end_date=(
+652:                     payload.get("endDate")
+653:                     or payload["startDate"]
+654:                 ),
+655:                 start_time=(
+656:                     payload.get("startTime") or ""
+657:                 ),
+658:                 end_time=(
+659:                     payload.get("endTime") or ""
+660:                 ),
+661:             )
+662: 
+663:             return await self.hr.save_leave(
+664:                 context,
+665:                 leave_type,
+666:                 start_date=payload["startDate"],
+667:                 end_date=(
+668:                     payload.get("endDate")
+669:                     or payload["startDate"]
+670:                 ),
+671:                 start_time=(
+672:                     payload.get("startTime") or ""
+673:                 ),
+674:                 end_time=(
+675:                     payload.get("endTime") or ""
+676:                 ),
+677:                 notes=payload.get("notes") or "",
+678:                 additional_values=(
+679:                     payload.get("additionalValues")
+680:                     or {}
+681:                 ),
+682:                 idempotency_key=idempotency_key,
+683:             )
+684: 
+685:         raise AppError(
+686:             "نوع عملیات پشتیبانی نمی‌شود.",
+687:             details={
+688:                 "actionType": action_type,
+689:             },
+690:         )
+===== D:\serviceAi\app\application\services\hr_service.py lines 110-175 =====
+110:             raise AppError("این نوع درخواست امکان ثبت چندروزه ندارد.", code="MULTI_DAY_NOT_ALLOWED")
+111:         safe_start_time = normalize_time(start_time) if is_partial else ""
+112:         safe_end_time = normalize_time(end_time) if is_partial else ""
+113:         planned_hours = "0"
+114:         if is_partial:
+115:             if not safe_start_time or not safe_end_time:
+116:                 raise AppError("ساعت شروع و پایان برای درخواست ساعتی الزامی است.", code="TIME_REQUIRED")
+117:             planned_hours = f"{hours_between(safe_start_time, safe_end_time):g}"
+118:         self._validate_required_additional_fields(leave_type, additional_values or {})
+119:         absence_code = str(leave_type.get("absenceTypeCode") or "")
+120:         if not absence_code:
+121:             raise AppError("کد نوع درخواست مشخص نیست.", code="ABSENCE_TYPE_REQUIRED")
+122:         info_type = str(leave_type.get("infoType") or leave_type.get("infotype") or "")
+123:         if info_type:
+124:             await self.calculate_leave_span(context, absence_code, info_type, start_date, end_date, safe_start_time, safe_end_time)
+125:             await self.get_quota_available(context, absence_code, info_type)
+126:         payload = {
+127:             "StartDate": start_date,
+128:             "EndDate": end_date,
+129:             "StartTime": safe_start_time,
+130:             "EndTime": safe_end_time,
+131:             "EmployeeID": context.employee_id,
+132:             "AbsenceTypeName": leave_type.get("absenceTypeName") or "",
+133:             "AbsenceTypeCode": absence_code,
+134:             "Notes": notes or "",
+135:             "PlannedWorkingHours": planned_hours,
+136:             "IsMultiLevelApproval": str(parse_bool(leave_type.get("isMultiLevelApproval"))).lower(),
+137:             "IsAllowedDurationMultipleDay": str(allows_multiple_days).lower(),
+138:             "ApproverLvlsJson": self.build_approver_lvls_json(leave_type),
+139:             "AdditionalFieldsJson": self.build_additional_fields_json(leave_type, additional_values or {}),
+140:         }
+141:         return await self.client.post_form("PostLeaveSave", context, payload, idempotency_key=idempotency_key)
+142: 
+143:     async def get_time_events(self, context: AgentContext, begda: str, endda: str) -> dict[str, Any]:
+144:         begda, endda = validate_jalali_range(begda, endda)
+145:         return await self.client.get("GetTimeEvent", context, {"EmployeeID": context.employee_id, "Begda": begda, "Endda": endda})
+146: 
+147:     async def post_time_event(
+148:         self,
+149:         context: AgentContext,
+150:         event_date: str,
+151:         event_time: str,
+152:         note: str = "",
+153:         *,
+154:         idempotency_key: str | None = None,
+155:     ) -> dict[str, Any]:
+156:         event_date, _ = validate_jalali_range(event_date, event_date)
+157:         event_time = normalize_time(event_time)
+158:         return await self.client.post_json(
+159:             "PostTimeEventSet",
+160:             context,
+161:             {"employeeID": context.employee_id, "eventDate": event_date, "eventTime": event_time, "note": note or ""},
+162:             idempotency_key=idempotency_key,
+163:         )
+164: 
+165:     async def ensure_no_exact_duplicate_leave(
+166:         self,
+167:         context: AgentContext,
+168:         *,
+169:         absence_type_code: str,
+170:         start_date: str,
+171:         end_date: str,
+172:         start_time: str = "",
+173:         end_time: str = "",
+174:     ) -> None:
+175:         response = await self.get_leave_requests(context, start_date)

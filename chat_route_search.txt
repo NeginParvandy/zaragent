@@ -1,0 +1,46 @@
+﻿D:\serviceAi\app\api\routes\agent.py:20:ChatRequest,
+D:\serviceAi\app\api\routes\agent.py:131:@router.post(
+D:\serviceAi\app\api\routes\agent.py:162:@router.post(
+D:\serviceAi\app\api\routes\agent.py:200:@router.post(
+D:\serviceAi\app\api\routes\agent.py:238:@router.post(
+D:\serviceAi\app\api\routes\agent.py:243:request: ChatRequest,
+D:\serviceAi\app\api\routes\agent.py:275:@router.post(
+D:\serviceAi\app\api\routes\agent.py:309:@router.post(
+D:\serviceAi\app\api\routes\agent.py:341:@router.post(
+D:\serviceAi\app\application\services\food_service.py:36:"usernamehash",
+D:\serviceAi\app\application\services\food_service.py:37:"passwordhash",
+D:\serviceAi\app\application\services\food_service.py:38:"digitcode",
+D:\serviceAi\app\core\config.py:57:default_username_hash: SecretStr = Field(default=SecretStr(""), alias="DEFAULT_USERNAME_HASH")
+D:\serviceAi\app\core\config.py:58:default_password_hash: SecretStr = Field(default=SecretStr(""), alias="DEFAULT_PASSWORD_HASH")
+D:\serviceAi\app\core\config.py:59:default_digit_code: int | None = Field(default=None, alias="DEFAULT_DIGIT_CODE", ge=0)
+D:\serviceAi\app\core\config.py:87:@field_validator("default_digit_code", "default_restaurant_id", "default_meal_id", mode="before")
+D:\serviceAi\app\core\security.py:9:SENSITIVE_PATTERN = re.compile(r'(?i)(authorization|token|passwordhash|usernamehash|digitcode|api[_-]?key)(["\s:=]+)([^&\s,}\"]+)')
+D:\serviceAi\app\domain\models.py:82:username_hash: SecretStr | None = Field(
+D:\serviceAi\app\domain\models.py:85:"usernameHash",
+D:\serviceAi\app\domain\models.py:86:"UsernameHash",
+D:\serviceAi\app\domain\models.py:90:password_hash: SecretStr | None = Field(
+D:\serviceAi\app\domain\models.py:93:"passwordHash",
+D:\serviceAi\app\domain\models.py:94:"PasswordHash",
+D:\serviceAi\app\domain\models.py:98:digit_code: int | None = Field(
+D:\serviceAi\app\domain\models.py:101:"digitCode",
+D:\serviceAi\app\domain\models.py:102:"DigitCode",
+D:\serviceAi\app\domain\models.py:107:@field_validator("digit_code", mode="before")
+D:\serviceAi\app\domain\models.py:109:def validate_digit_code(
+D:\serviceAi\app\domain\models.py:118:"digitCode must be numeric"
+D:\serviceAi\app\domain\models.py:129:"digitCode must be numeric"
+D:\serviceAi\app\domain\models.py:375:class ChatRequest(BaseModel):
+D:\serviceAi\app\infrastructure\clients\base_client.py:57:session.username_hash,
+D:\serviceAi\app\infrastructure\clients\base_client.py:58:session.password_hash,
+D:\serviceAi\app\infrastructure\clients\base_client.py:59:session.digit_code,
+D:\serviceAi\app\infrastructure\clients\base_client.py:61:self.settings.default_username_hash,
+D:\serviceAi\app\infrastructure\clients\base_client.py:62:self.settings.default_password_hash,
+D:\serviceAi\app\infrastructure\clients\base_client.py:63:self.settings.default_digit_code,
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:19:username = secret_value(session.username_hash) or self.settings.default_username_hash.get_secret_value()
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:20:password = secret_value(session.password_hash) or self.settings.default_password_hash.get_secret_value()
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:21:digit = session.digit_code if session.digit_code is not None else self.settings.default_digit_code
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:24:missing.append("usernameHash")
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:26:missing.append("passwordHash")
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:28:missing.append("digitCode")
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:35:return {"UsernameHash": username, "PasswordHash": password, "digitCode": digit}
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:39:return {"usernameHash": username, "passwordHash": password, "digitCode": digit}
+D:\serviceAi\app\infrastructure\clients\personnel_client.py:43:return {"UsernameHash": username, "PasswordHash": password, "DigitCode": digit}

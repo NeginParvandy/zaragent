@@ -1,0 +1,339 @@
+﻿================ dependencies.py ================
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from fastapi import Header, Request
+
+from app.core.config import get_settings
+from app.core.exceptions import AppError
+from app.core.security import secure_equals
+
+
+@dataclass(frozen=True)
+class GatewayIdentity:
+    employee_id: str | None
+    scope: str
+    authenticated: bool
+
+
+async def require_user_identity(
+    request: Request,
+    x_agent_key: str | None = Header(default=None, alias="X-Agent-Key"),
+    x_agent_scope: str | None = Header(default="user", alias="X-Agent-Scope"),
+) -> GatewayIdentity:
+    settings = get_settings()
+
+    # Compatibility mode: the existing application contract is accepted as-is.
+    # No new header or Backend change is required. Employee/session data is read
+    # from the existing request body by ContextResolver.
+    if not settings.auth_required:
+        return GatewayIdentity(employee_id=None, scope=x_agent_scope or "user", authenticated=False)
+
+    x_employee_id = request.headers.get(settings.trusted_gateway_header)
+    if not secure_equals(x_agent_key, settings.agent_api_key):
+        raise AppError("ط§ط­ط±ط§ط² ظ‡ظˆغŒطھ Gateway ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ.", status_code=401, code="UNAUTHORIZED")
+    if not x_employee_id:
+        raise AppError("ظ‡ظˆغŒطھ ع©ط§ط±ط¨ط± ط§ط² Gateway ط§ط±ط³ط§ظ„ ظ†ط´ط¯ظ‡ ط§ط³طھ.", status_code=401, code="MISSING_IDENTITY")
+    return GatewayIdentity(employee_id=x_employee_id.strip(), scope=x_agent_scope or "user", authenticated=True)
+
+
+async def require_admin_identity(
+    x_admin_key: str | None = Header(default=None, alias="X-Admin-Key"),
+) -> GatewayIdentity:
+    settings = get_settings()
+    if not settings.enable_admin_endpoints:
+        raise AppError("ظ…ط³غŒط± ظ…ط¯غŒط±غŒطھغŒ ظپط¹ط§ظ„ ظ†غŒط³طھ.", status_code=404, code="NOT_FOUND")
+    if not secure_equals(x_admin_key, settings.admin_api_key):
+        raise AppError("ط¯ط³طھط±ط³غŒ ظ…ط¯غŒط±غŒطھغŒ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ.", status_code=403, code="FORBIDDEN")
+    return GatewayIdentity(employee_id=None, scope="admin", authenticated=True)
+
+================ context_resolver.py ================
+from __future__ import annotations
+
+from app.api.dependencies import GatewayIdentity
+from app.core.config import Settings
+from app.core.exceptions import AppError, MissingConfigurationError
+from app.core.time import local_jalali_today
+from app.domain.models import AgentContext, UserSession
+
+
+class ContextResolver:
+    def __init__(self, settings: Settings):
+        self.settings = settings
+
+    def resolve(self, context: AgentContext | None, identity: GatewayIdentity | None = None) -> AgentContext:
+        ctx = (context or AgentContext()).model_copy(deep=True)
+        session = ctx.session or UserSession()
+        trusted_employee = identity.employee_id if identity else None
+        if trusted_employee:
+            if ctx.employee_id and str(ctx.employee_id) != str(trusted_employee):
+                raise AppError("ع©ط¯ ظ¾ط±ط³ظ†ظ„غŒ Body ط¨ط§ ظ‡ظˆغŒطھ ظ…ط¹طھط¨ط± Gateway طھط·ط§ط¨ظ‚ ظ†ط¯ط§ط±ط¯.", status_code=403, code="IDENTITY_MISMATCH")
+            ctx.employee_id = trusted_employee
+        elif not ctx.employee_id and not self.settings.auth_required and self.settings.default_employee_id:
+            ctx.employee_id = self.settings.default_employee_id
+        if not ctx.date:
+            ctx.date = local_jalali_today(self.settings.app_timezone)
+        if ctx.restaurant_id is None and self.settings.default_restaurant_id is not None:
+            ctx.restaurant_id = self.settings.default_restaurant_id
+        if ctx.meal_id is None and self.settings.default_meal_id is not None:
+            ctx.meal_id = self.settings.default_meal_id
+        ctx.session = session
+        return ctx
+
+    def require_employee(self, context: AgentContext) -> str:
+        employee = context.employee_id
+        if not employee:
+            raise MissingConfigurationError("ع©ط¯ ظ¾ط±ط³ظ†ظ„غŒ ع©ط§ط±ط¨ط± ظ…ط´ط®طµ ظ†غŒط³طھ.", details={"field": "employeeId"})
+        return str(employee)
+
+================ models.py lines 50-145 ================
+class ActionType(str, Enum):
+    reserve_food = "RESERVE_FOOD"
+    cancel_food = "CANCEL_FOOD"
+    rate_food = "RATE_FOOD"
+    create_leave = "CREATE_LEAVE"
+    delete_leave = "DELETE_LEAVE"
+    create_time_event = "CREATE_TIME_EVENT"
+    dismiss = "DISMISS"
+    open_page = "OPEN_PAGE"
+
+
+class UserSession(BaseModel):
+    """
+    ط§ط·ظ„ط§ط¹ط§طھ ظ†ط´ط³طھ ط³ط±ظˆغŒط³â€Œظ‡ط§غŒ Food ظˆ HR.
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+    authorization_token: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "authorizationToken",
+            "accessToken",
+            "authToken",
+            "token",
+            "Authorization",
+        ),
+    )
+
+    username_hash: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "usernameHash",
+            "UsernameHash",
+        ),
+    )
+
+    password_hash: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "passwordHash",
+            "PasswordHash",
+        ),
+    )
+
+    digit_code: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "digitCode",
+            "DigitCode",
+        ),
+        ge=0,
+    )
+
+    @field_validator("digit_code", mode="before")
+    @classmethod
+    def validate_digit_code(
+        cls,
+        value: Any,
+    ) -> Any:
+        if value in (None, ""):
+            return None
+
+        if isinstance(value, bool):
+            raise ValueError(
+                "digitCode must be numeric"
+            )
+
+        try:
+            return int(
+                normalize_persian_text(
+                    str(value)
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "digitCode must be numeric"
+            ) from exc
+
+
+class AgentContext(BaseModel):
+    """
+    ظ…ط¯ظ„ ط¯ط§ط®ظ„غŒ Context.
+
+    ط§غŒظ† ظ…ط¯ظ„ ظ…ط³طھظ‚غŒظ…ط§ظ‹ Request Body ظ‡غŒع† EndpointغŒ ظ†غŒط³طھ.
+    ط¨ظ†ط§ط¨ط±ط§غŒظ† ظپغŒظ„ط¯ظ‡ط§غŒ ط¯ط§ط®ظ„غŒ ط¢ظ† ط¯ط± Swagger ط¹ظ…ظˆظ…غŒ ظ†ظ…ط§غŒط´
+    ط¯ط§ط¯ظ‡ ظ†ظ…غŒâ€Œط´ظˆظ†ط¯.
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+================ models.py lines 215-365 ================
+    def validate_date(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if not value:
+            return None
+
+        return normalize_jalali_date(value)
+
+
+class EmployeeRequestBase(BaseModel):
+    """
+    ظ…ط¯ظ„ ظ¾ط§غŒظ‡ Endpointظ‡ط§غŒغŒ ع©ظ‡ ظپظ‚ط· ط´ظ†ط§ط³ظ‡ ع©ط§ط±ط¨ط±
+    ط±ط§ ظ†غŒط§ط² ط¯ط§ط±ظ†ط¯.
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+    employee_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "employeeId",
+            "EmployeeID",
+            "employeeID",
+        ),
+        min_length=1,
+        max_length=30,
+    )
+
+    @field_validator(
+        "employee_id",
+        mode="before",
+    )
+    @classmethod
+    def strip_employee_id(
+        cls,
+        value: Any,
+    ) -> Any:
+        if value is None:
+            return None
+
+        text = str(value).strip()
+        return text or None
+
+    def to_context(
+        self,
+        **overrides: Any,
+    ) -> AgentContext:
+        data: dict[str, Any] = {
+            "employee_id": self.employee_id,
+        }
+
+        data.update(overrides)
+
+        return AgentContext(**data)
+
+
+class IntegrationContextRequest(EmployeeRequestBase):
+    """
+    ظپغŒظ„ط¯ظ‡ط§غŒ ظ…ط´طھط±ع© Endpointظ‡ط§غŒغŒ ع©ظ‡ ط¨ظ‡ HR غŒط§ Food
+    ظ…طھطµظ„ ظ…غŒâ€Œط´ظˆظ†ط¯.
+    """
+
+    date: str | None = None
+
+    restaurant_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "restaurantId",
+            "resturantId",
+        ),
+        ge=1,
+    )
+
+    meal_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "mealId",
+        ),
+        ge=1,
+    )
+
+    session: UserSession | None = None
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if not value:
+            return None
+
+        return normalize_jalali_date(value)
+
+    def to_context(
+        self,
+        **overrides: Any,
+    ) -> AgentContext:
+        data: dict[str, Any] = {
+            "employee_id": self.employee_id,
+            "date": self.date,
+            "restaurant_id": self.restaurant_id,
+            "meal_id": self.meal_id,
+            "session": self.session,
+        }
+
+        data.update(overrides)
+
+        return AgentContext(**data)
+
+
+class ChatContextRequest(EmployeeRequestBase):
+    """Public context accepted by the Chat API."""
+
+    # PUBLIC_CHAT_DATE_REMOVED_SAFE
+    session: UserSession | None = Field(
+        default=None
+    )
+
+    def to_context(self) -> AgentContext:
+        return AgentContext(
+            employee_id=self.employee_id,
+            session=self.session,
+        )
+
+class DailyBriefRequest(IntegrationContextRequest):
+    """
+    Request ظ…ط®طµظˆطµ POST /api/agent/daily-brief.
+    """
+
+    pass
+
+
+class ReminderCheckRequest(IntegrationContextRequest):
+    """
+    Request ظ…ط®طµظˆطµ POST /api/agent/reminders/check.
+
+    طھط´ط®غŒطµ ظ¾ط§غŒط§ظ† ظ…ط§ظ‡ ظˆ طھظ†ط¸غŒظ…ط§طھ ظ…ط±ط¨ظˆط· ط¨ظ‡ ط¢ظ† ع©ط§ظ…ظ„ط§ظ‹
+    ط¯ط§ط®ظ„غŒ ط§ط³طھ.
+    """
+
+    pass
+
+
+class ReminderListRequest(EmployeeRequestBase):
+    """
+    Request ظ…ط®طµظˆطµ POST /api/agent/reminders.

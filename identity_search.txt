@@ -1,0 +1,7 @@
+﻿D:\serviceAi\app\api\dependencies.py:13:class GatewayIdentity:
+D:\serviceAi\app\api\dependencies.py:19:async def require_user_identity(
+D:\serviceAi\app\application\services\context_resolver.py:10:class ContextResolver:
+D:\serviceAi\app\application\services\context_resolver.py:33:def require_employee(self, context: AgentContext) -> str:
+D:\serviceAi\app\domain\models.py:61:class UserSession(BaseModel):
+D:\serviceAi\app\domain\models.py:225:class EmployeeRequestBase(BaseModel):
+D:\serviceAi\app\domain\models.py:330:class ChatContextRequest(EmployeeRequestBase):
